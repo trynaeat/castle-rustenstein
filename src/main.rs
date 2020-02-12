@@ -11,9 +11,9 @@ use std::time::Duration;
 use cgmath::Vector2;
 use cgmath::Vector3;
 
-const SCREEN_WIDTH: u32 = 800;
-const SCREEN_HEIGHT: u32 = 600;
-const WALL_HEIGHT: i32 = 600;
+const SCREEN_WIDTH: i32 = 1920;
+const SCREEN_HEIGHT: i32 = 1080;
+const WALL_HEIGHT_SCALE: i32 = 1;
 const MOVE_SPEED: f64 = 6.0;
 const ROT_SPEED: f64 = 3.0;
 
@@ -38,7 +38,7 @@ pub fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
  
-    let window = video_subsystem.window("rust-sdl2 demo", SCREEN_WIDTH, SCREEN_HEIGHT)
+    let window = video_subsystem.window("rust-sdl2 demo", SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32)
         .position_centered()
         .build()
         .unwrap();
@@ -105,15 +105,15 @@ pub fn main() {
                 WallSide::Y => (curr_grid.y as f64 - player_pos.y + (1.0 - step_y as f64) / 2.0) / ray_dir.y,
             };
             // Calculate height of line
-            let line_height = (WALL_HEIGHT as f64 / perp_wall_dist) as i32;
+            let line_height = (WALL_HEIGHT_SCALE as f64 * SCREEN_HEIGHT as f64 / perp_wall_dist) as i32;
             // Get lowest/highest pixel to draw (drawing walls in middle of screen)
-            let mut draw_start = -line_height / 2 + WALL_HEIGHT / 2;
+            let mut draw_start = -line_height / 2 + SCREEN_HEIGHT / 2;
             if draw_start < 0 {
                 draw_start = 0;
             }
-            let mut draw_end = line_height / 2 + WALL_HEIGHT / 2;
-            if draw_end >= WALL_HEIGHT {
-                draw_end = WALL_HEIGHT - 1;
+            let mut draw_end = line_height / 2 + SCREEN_HEIGHT / 2;
+            if draw_end >= SCREEN_HEIGHT as i32 {
+                draw_end = SCREEN_HEIGHT as i32 - 1;
             }
             let mut color = match world_map[curr_grid.x as usize][curr_grid.y as usize] {
                 1 => Color::RGB(255, 0, 0),
@@ -140,12 +140,18 @@ pub fn main() {
             let move_speed = frame_time * MOVE_SPEED;
             let rot_speed = frame_time * ROT_SPEED;
             match keycode {
-                Keycode::Up => { 
-                    if world_map[(player_pos.x + player_dir.x * move_speed) as usize][player_pos.y as usize] == 0 {
-                        player_pos = player_pos + Vector3::new(player_dir.x * move_speed, player_dir.y * move_speed, 0.0);
+                Keycode::Up => {
+                    let new_pos = player_pos + Vector3::new(player_dir.x * move_speed, player_dir.y * move_speed, 0.0);
+                    if world_map[new_pos.x as usize][new_pos.y as usize] == 0 {
+                        player_pos = new_pos;
                     }
                 },
-                Keycode::Down => { player_pos = player_pos - Vector3::new(player_dir.x * move_speed, player_dir.y * move_speed, 0.0) },
+                Keycode::Down => {
+                    let new_pos = player_pos - Vector3::new(player_dir.x * move_speed, player_dir.y * move_speed, 0.0);
+                    if world_map[new_pos.x as usize][new_pos.y as usize] == 0 {
+                        player_pos = new_pos;
+                    }
+                },
                 Keycode::Right => {
                     player_dir = Vector2::new(
                         player_dir.x * (-rot_speed).cos() - player_dir.y * (-rot_speed).sin(),
