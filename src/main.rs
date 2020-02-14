@@ -1,13 +1,16 @@
-extern crate sdl2;
 extern crate cgmath;
+extern crate sdl2;
 mod data;
 
-use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
+use sdl2::pixels::Color;
+use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Point;
-use std::time::Duration;
+use sdl2::rect::Rect;
+use sdl2::render::Texture;
 use std::collections::HashSet;
+use std::time::Duration;
 
 use cgmath::Vector2;
 use cgmath::Vector3;
@@ -23,12 +26,12 @@ const ROT_SPEED: f64 = 2.0;
 struct Player {
     pos: Vector3<f64>,
     dir: Vector2<f64>,
-    camera_plane: Vector2<f64>
+    camera_plane: Vector2<f64>,
 }
 
 struct MapGrid {
     x: i32,
-    y: i32
+    y: i32,
 }
 
 #[derive(PartialEq)]
@@ -40,24 +43,43 @@ enum WallSide {
 pub fn main() {
     // Init map
     let world_map = crate::data::load_map("./src/data/maps/map_textured.json");
-    let textures = crate::data::gen_textures(TEX_WIDTH, TEX_HEIGHT);
     // Init Player and Camera
     let mut player = Player {
         pos: Vector3::new(22.0, 11.5, 0.0),
         dir: Vector2::new(-1.0, 0.0),
-        camera_plane: Vector2::new(0.0, 0.66)
+        camera_plane: Vector2::new(0.0, 0.66),
     };
     // SDL setup and loop
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
- 
-    let window = video_subsystem.window("rust-sdl2 demo", SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32)
+
+    let window = video_subsystem
+        .window("rust-sdl2 demo", SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32)
         .position_centered()
         .build()
         .unwrap();
- 
+
     let mut canvas = window.into_canvas().build().unwrap();
- 
+    // Load textures
+    let texture_bits = crate::data::gen_textures(TEX_WIDTH, TEX_HEIGHT);
+    let creator = canvas.texture_creator();
+    let mut textures: Vec<Texture> = vec![];
+    for i in texture_bits.iter() {
+        let mut texture = creator.create_texture_static(PixelFormatEnum::ARGB8888, TEX_WIDTH, TEX_HEIGHT).unwrap();
+        let row: [u8; 64 * 64 * 4];
+        unsafe {
+            // Interpret 2d array of 32 bit values into 1d array of 8 bit
+            row = std::mem::transmute::<[[u32; 64]; 64], [u8; 64 * 64 * 4]>(*i);
+        }
+        // let row: [u8; 64 * 64 * 4];
+        // let raw: [u32; 64 * 64] = [0x000000FF as u32; 64 * 64];
+        // unsafe {
+        //     row = std::mem::transmute::<[u32; 64 * 64], [u8; 64 * 64 * 4]>(raw);
+        // }
+        texture.update(None, &row, (TEX_WIDTH * 4) as usize).unwrap();
+        textures.push(texture);
+    }
+
     canvas.clear();
     let mut event_pump = sdl_context.event_pump().unwrap();
     // Time counter for last frame
@@ -74,7 +96,10 @@ pub fn main() {
             let ray_hit_pos = camera_x * player.camera_plane;
             let ray_dir = player.dir + ray_hit_pos;
             // Which box we're in
-            let mut curr_grid = MapGrid { x: player.pos.x as i32, y: player.pos.y as i32 };
+            let mut curr_grid = MapGrid {
+                x: player.pos.x as i32,
+                y: player.pos.y as i32,
+            };
             // Length of ray from any x/y side to next x/y side
             let delta_dist = Vector2::new((1.0 / ray_dir.x).abs(), (1.0 / ray_dir.y).abs());
             let step_x: i32;
@@ -113,11 +138,16 @@ pub fn main() {
                 }
             }
             let perp_wall_dist = match side {
-                WallSide::X => (curr_grid.x as f64 - player.pos.x + (1.0 - step_x as f64) / 2.0) / ray_dir.x,
-                WallSide::Y => (curr_grid.y as f64 - player.pos.y + (1.0 - step_y as f64) / 2.0) / ray_dir.y,
+                WallSide::X => {
+                    (curr_grid.x as f64 - player.pos.x + (1.0 - step_x as f64) / 2.0) / ray_dir.x
+                }
+                WallSide::Y => {
+                    (curr_grid.y as f64 - player.pos.y + (1.0 - step_y as f64) / 2.0) / ray_dir.y
+                }
             };
             // Calculate height of line
-            let line_height = (WALL_HEIGHT_SCALE as f64 * SCREEN_HEIGHT as f64 / perp_wall_dist) as i32;
+            let line_height =
+                (WALL_HEIGHT_SCALE as f64 * SCREEN_HEIGHT as f64 / perp_wall_dist) as i32;
             // Get lowest/highest pixel to draw (drawing walls in middle of screen)
             let mut draw_start = -1 * line_height / 2 + SCREEN_HEIGHT / 2;
             if draw_start < 0 {
@@ -147,21 +177,21 @@ pub fn main() {
             }
             let step = 1.0 * TEX_HEIGHT as f64 / line_height as f64;
             let mut tex_pos = (draw_start - SCREEN_HEIGHT / 2 + line_height / 2) as f64 * step;
-            for y in draw_start..draw_end {
-                let tex_y = tex_pos as u32 & (TEX_HEIGHT - 1);
-                tex_pos += step;
-                let mut color = textures[tex_num as usize][tex_y as usize][tex_x as usize];
-                //make color darker for y-sides: R, G and B byte each divided through two with a "shift" and an "and"
-                if side == WallSide::Y {
-                    color = (color >> 1) & 8355711;
-                }
-                // let byte_a = ((color & 0xff000000) >> 24) as u8;
-                let byte_r = ((color & 0x00ff0000) >> 16) as u8;
-                let byte_g = ((color & 0x0000ff00) >>  8) as u8;
-                let byte_b = (color & 0x000000ff) as u8;
-                // canvas.set_draw_color(Color::RGB(byte_r, byte_g, byte_b));
-                // canvas.draw_point(Point::new(i, y)).unwrap();
-            }
+            // for y in draw_start..draw_end {
+            //     let tex_y = tex_pos as u32 & (TEX_HEIGHT - 1);
+            //     tex_pos += step;
+            //     let mut color = textures[tex_num as usize][tex_y as usize][tex_x as usize];
+            //     //make color darker for y-sides: R, G and B byte each divided through two with a "shift" and an "and"
+            //     if side == WallSide::Y {
+            //         color = (color >> 1) & 8355711;
+            //     }
+            //     // let byte_a = ((color & 0xff000000) >> 24) as u8;
+            //     let byte_r = ((color & 0x00ff0000) >> 16) as u8;
+            //     let byte_g = ((color & 0x0000ff00) >> 8) as u8;
+            //     let byte_b = (color & 0x000000ff) as u8;
+            //     // canvas.set_draw_color(Color::RGB(byte_r, byte_g, byte_b));
+            //     // canvas.draw_point(Point::new(i, y)).unwrap();
+            // }
             // let mut color = match world_map[curr_grid.x as usize][curr_grid.y as usize] {
             //     1 => Color::RGB(255, 0, 0),
             //     2 => Color::RGB(0, 255, 0),
@@ -174,8 +204,18 @@ pub fn main() {
             //     WallSide::Y => Color::RGB(color.r / 2, color.g / 2, color.b / 2),
             // };
             // canvas.set_draw_color(color);
-            canvas.set_draw_color(Color::RGB(255, 0, 0));
-            canvas.draw_line(Point::new(i as i32, draw_start), Point::new(i as i32, draw_end)).unwrap();
+            // canvas.set_draw_color(Color::RGB(255, 0, 0));
+            // canvas
+            //     .draw_line(
+            //         Point::new(i as i32, draw_start),
+            //         Point::new(i as i32, draw_end),
+            //     )
+            //     .unwrap();
+            canvas.copy(
+                &textures[tex_num as usize], 
+                Rect::new(tex_x as i32, 0, 1, TEX_HEIGHT),
+                Rect::new(i as i32, draw_start, 1, draw_end as u32),
+            ).unwrap();
         }
         // Get frame time
         let time = sdl_context.timer().unwrap().ticks();
@@ -186,10 +226,11 @@ pub fn main() {
 
         for event in event_pump.poll_iter() {
             match event {
-                Event::Quit {..} |
-                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                    break 'running
-                },
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => break 'running,
                 _ => {}
             }
         }
@@ -203,21 +244,29 @@ pub fn main() {
         // println!("{}", 1.0 / frame_time);
     }
 
-    fn move_player (player: &mut Player, world_map: &[[u32; 24]; 24], event_pump: &sdl2::EventPump, frame_time: f64) {
+    fn move_player(
+        player: &mut Player,
+        world_map: &[[u32; 24]; 24],
+        event_pump: &sdl2::EventPump,
+        frame_time: f64,
+    ) {
         let move_speed = frame_time * MOVE_SPEED;
         let rot_speed = frame_time * ROT_SPEED;
-        let pressed_keys: HashSet<Keycode> = event_pump.keyboard_state()
+        let pressed_keys: HashSet<Keycode> = event_pump
+            .keyboard_state()
             .pressed_scancodes()
             .filter_map(Keycode::from_scancode)
             .collect();
         if pressed_keys.contains(&Keycode::Up) {
-            let new_pos = player.pos + Vector3::new(player.dir.x * move_speed, player.dir.y * move_speed, 0.0);
+            let new_pos = player.pos
+                + Vector3::new(player.dir.x * move_speed, player.dir.y * move_speed, 0.0);
             if world_map[new_pos.x as usize][new_pos.y as usize] == 0 {
                 player.pos = new_pos;
             }
         }
         if pressed_keys.contains(&Keycode::Down) {
-            let new_pos = player.pos - Vector3::new(player.dir.x * move_speed, player.dir.y * move_speed, 0.0);
+            let new_pos = player.pos
+                - Vector3::new(player.dir.x * move_speed, player.dir.y * move_speed, 0.0);
             if world_map[new_pos.x as usize][new_pos.y as usize] == 0 {
                 player.pos = new_pos;
             }
@@ -238,8 +287,10 @@ pub fn main() {
                 player.dir.x * (-rot_speed).sin() + player.dir.y * (-rot_speed).cos(),
             );
             player.camera_plane = Vector2::new(
-                player.camera_plane.x * (-rot_speed).cos() - player.camera_plane.y * (-rot_speed).sin(),
-                player.camera_plane.x * (-rot_speed).sin() + player.camera_plane.y * (-rot_speed).cos(),
+                player.camera_plane.x * (-rot_speed).cos()
+                    - player.camera_plane.y * (-rot_speed).sin(),
+                player.camera_plane.x * (-rot_speed).sin()
+                    + player.camera_plane.y * (-rot_speed).cos(),
             );
         }
     }
