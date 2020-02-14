@@ -190,9 +190,19 @@ pub fn main() {
                 WallSide::X => &textures[tex_num as usize],
                 WallSide::Y => &dark_textures[tex_num as usize],
             };
+            let mut tex_strip_start = 0;
+            let mut tex_strip_height = TEX_HEIGHT as i32;
+            let screen_wall_ratio = SCREEN_HEIGHT as f64 / line_height as f64;
+            // Trim texture region to only be the portion visible in the viewcreen, if wall > screen height
+            if screen_wall_ratio < 1.0 {
+                let tex_y_drawn = (screen_wall_ratio * TEX_HEIGHT as f64) as i32;
+                let offset = TEX_HEIGHT as i32 - tex_y_drawn;
+                tex_strip_start += offset / 2;
+                tex_strip_height -= offset;
+            }
             canvas.copy(
                 texture, 
-                Rect::new(tex_x as i32, 0, 1, TEX_HEIGHT),
+                Rect::new(tex_x as i32, tex_strip_start, 1, tex_strip_height as u32),
                 Rect::new(i as i32, SCREEN_HEIGHT - draw_end, 1, (draw_end - draw_start) as u32),
             ).unwrap();
         }
@@ -215,7 +225,7 @@ pub fn main() {
         }
 
         canvas.present();
-        // ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
 
     pub fn draw_fps(frame_time: f64) {
