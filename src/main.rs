@@ -12,6 +12,8 @@ use std::collections::HashSet;
 use cgmath::Vector2;
 use cgmath::Vector3;
 
+const TEX_WIDTH: u32 = 64;
+const TEX_HEIGHT: u32 = 64;
 const SCREEN_WIDTH: i32 = 1920;
 const SCREEN_HEIGHT: i32 = 1080;
 const WALL_HEIGHT_SCALE: i32 = 1;
@@ -29,6 +31,7 @@ struct MapGrid {
     y: i32
 }
 
+#[derive(PartialEq)]
 enum WallSide {
     X,
     Y,
@@ -36,10 +39,11 @@ enum WallSide {
 
 pub fn main() {
     // Init map
-    let world_map = crate::data::load_map("./src/data/maps/map.json");
+    let world_map = crate::data::load_map("./src/data/maps/map_textured.json");
+    let textures = crate::data::gen_textures(TEX_WIDTH, TEX_HEIGHT);
     // Init Player and Camera
     let mut player = Player {
-        pos: Vector3::new(22.0, 12.0, 0.0),
+        pos: Vector3::new(22.0, 11.5, 0.0),
         dir: Vector2::new(-1.0, 0.0),
         camera_plane: Vector2::new(0.0, 0.66)
     };
@@ -55,7 +59,6 @@ pub fn main() {
     let mut canvas = window.into_canvas().build().unwrap();
  
     canvas.clear();
-    canvas.present();
     let mut event_pump = sdl_context.event_pump().unwrap();
     // Time counter for last frame
     let mut old_time: u32 = 0;
@@ -116,7 +119,7 @@ pub fn main() {
             // Calculate height of line
             let line_height = (WALL_HEIGHT_SCALE as f64 * SCREEN_HEIGHT as f64 / perp_wall_dist) as i32;
             // Get lowest/highest pixel to draw (drawing walls in middle of screen)
-            let mut draw_start = -line_height / 2 + SCREEN_HEIGHT / 2;
+            let mut draw_start = -1 * line_height / 2 + SCREEN_HEIGHT / 2;
             if draw_start < 0 {
                 draw_start = 0;
             }
@@ -124,18 +127,54 @@ pub fn main() {
             if draw_end >= SCREEN_HEIGHT as i32 {
                 draw_end = SCREEN_HEIGHT as i32 - 1;
             }
-            let mut color = match world_map[curr_grid.x as usize][curr_grid.y as usize] {
-                1 => Color::RGB(255, 0, 0),
-                2 => Color::RGB(0, 255, 0),
-                3 => Color::RGB(0, 0, 255),
-                _ => Color::RGB(128, 128, 0),
+            // Texture calculations
+            let tex_num = world_map[curr_grid.x as usize][curr_grid.y as usize] - 1;
+
+            // Exact x/y coord where it hit
+            let wall_x = match side {
+                WallSide::X => player.pos.y + perp_wall_dist * ray_dir.y,
+                WallSide::Y => player.pos.x + perp_wall_dist * ray_dir.x,
             };
-            // Set y side to darker
-            color = match side {
-                WallSide::X => color,
-                WallSide::Y => Color::RGB(color.r / 2, color.g / 2, color.b / 2),
-            };
-            canvas.set_draw_color(color);
+            let wall_x = wall_x - wall_x.floor();
+
+            //x coord on the texture
+            let mut tex_x = (wall_x * TEX_WIDTH as f64) as u32;
+            if side == WallSide::X && ray_dir.x > 0 as f64 {
+                tex_x = TEX_WIDTH - tex_x - 1;
+            }
+            if side == WallSide::Y && ray_dir.y < 0 as f64 {
+                tex_x = TEX_WIDTH - tex_x - 1;
+            }
+            let step = 1.0 * TEX_HEIGHT as f64 / line_height as f64;
+            let mut tex_pos = (draw_start - SCREEN_HEIGHT / 2 + line_height / 2) as f64 * step;
+            for y in draw_start..draw_end {
+                let tex_y = tex_pos as u32 & (TEX_HEIGHT - 1);
+                tex_pos += step;
+                let mut color = textures[tex_num as usize][tex_y as usize][tex_x as usize];
+                //make color darker for y-sides: R, G and B byte each divided through two with a "shift" and an "and"
+                if side == WallSide::Y {
+                    color = (color >> 1) & 8355711;
+                }
+                // let byte_a = ((color & 0xff000000) >> 24) as u8;
+                let byte_r = ((color & 0x00ff0000) >> 16) as u8;
+                let byte_g = ((color & 0x0000ff00) >>  8) as u8;
+                let byte_b = (color & 0x000000ff) as u8;
+                // canvas.set_draw_color(Color::RGB(byte_r, byte_g, byte_b));
+                // canvas.draw_point(Point::new(i, y)).unwrap();
+            }
+            // let mut color = match world_map[curr_grid.x as usize][curr_grid.y as usize] {
+            //     1 => Color::RGB(255, 0, 0),
+            //     2 => Color::RGB(0, 255, 0),
+            //     3 => Color::RGB(0, 0, 255),
+            //     _ => Color::RGB(128, 128, 0),
+            // };
+            // // Set y side to darker
+            // color = match side {
+            //     WallSide::X => color,
+            //     WallSide::Y => Color::RGB(color.r / 2, color.g / 2, color.b / 2),
+            // };
+            // canvas.set_draw_color(color);
+            canvas.set_draw_color(Color::RGB(255, 0, 0));
             canvas.draw_line(Point::new(i as i32, draw_start), Point::new(i as i32, draw_end)).unwrap();
         }
         // Get frame time
@@ -156,7 +195,7 @@ pub fn main() {
         }
 
         canvas.present();
-        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+        // ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
 
     pub fn draw_fps(frame_time: f64) {
