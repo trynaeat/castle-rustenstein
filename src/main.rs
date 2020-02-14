@@ -64,20 +64,31 @@ pub fn main() {
     let texture_bits = crate::data::gen_textures(TEX_WIDTH, TEX_HEIGHT);
     let creator = canvas.texture_creator();
     let mut textures: Vec<Texture> = vec![];
+    let mut dark_textures: Vec<Texture> = vec![];
     for i in texture_bits.iter() {
         let mut texture = creator.create_texture_static(PixelFormatEnum::ARGB8888, TEX_WIDTH, TEX_HEIGHT).unwrap();
+        let mut dark_texture = creator.create_texture_static(PixelFormatEnum::ARGB8888, TEX_WIDTH, TEX_HEIGHT).unwrap();
         let row: [u8; 64 * 64 * 4];
         unsafe {
             // Interpret 2d array of 32 bit values into 1d array of 8 bit
             row = std::mem::transmute::<[[u32; 64]; 64], [u8; 64 * 64 * 4]>(*i);
         }
-        // let row: [u8; 64 * 64 * 4];
-        // let raw: [u32; 64 * 64] = [0x000000FF as u32; 64 * 64];
-        // unsafe {
-        //     row = std::mem::transmute::<[u32; 64 * 64], [u8; 64 * 64 * 4]>(raw);
-        // }
         texture.update(None, &row, (TEX_WIDTH * 4) as usize).unwrap();
         textures.push(texture);
+        let mut dark_bits: [[u32; 64]; 64] = [[0; 64]; 64];
+        let dark_row: [u8; 64 * 64 * 4];
+        // Divide color by 2 for dark texture
+        for (x, row) in i.iter().enumerate() {
+            for (y, bit) in row.iter().enumerate() {
+                dark_bits[x as usize][y as usize] = (bit >> 1) & 8355711 as u32;
+            }
+        }
+        unsafe {
+            // Interpret 2d array of 32 bit values into 1d array of 8 bit
+            dark_row = std::mem::transmute::<[[u32; 64]; 64], [u8; 64 * 64 * 4]>(dark_bits);
+        }
+        dark_texture.update(None, &dark_row, (TEX_WIDTH * 4) as usize).unwrap();
+        dark_textures.push(dark_texture);
     }
 
     canvas.clear();
@@ -175,46 +186,14 @@ pub fn main() {
             if side == WallSide::Y && ray_dir.y < 0 as f64 {
                 tex_x = TEX_WIDTH - tex_x - 1;
             }
-            let step = 1.0 * TEX_HEIGHT as f64 / line_height as f64;
-            let mut tex_pos = (draw_start - SCREEN_HEIGHT / 2 + line_height / 2) as f64 * step;
-            // for y in draw_start..draw_end {
-            //     let tex_y = tex_pos as u32 & (TEX_HEIGHT - 1);
-            //     tex_pos += step;
-            //     let mut color = textures[tex_num as usize][tex_y as usize][tex_x as usize];
-            //     //make color darker for y-sides: R, G and B byte each divided through two with a "shift" and an "and"
-            //     if side == WallSide::Y {
-            //         color = (color >> 1) & 8355711;
-            //     }
-            //     // let byte_a = ((color & 0xff000000) >> 24) as u8;
-            //     let byte_r = ((color & 0x00ff0000) >> 16) as u8;
-            //     let byte_g = ((color & 0x0000ff00) >> 8) as u8;
-            //     let byte_b = (color & 0x000000ff) as u8;
-            //     // canvas.set_draw_color(Color::RGB(byte_r, byte_g, byte_b));
-            //     // canvas.draw_point(Point::new(i, y)).unwrap();
-            // }
-            // let mut color = match world_map[curr_grid.x as usize][curr_grid.y as usize] {
-            //     1 => Color::RGB(255, 0, 0),
-            //     2 => Color::RGB(0, 255, 0),
-            //     3 => Color::RGB(0, 0, 255),
-            //     _ => Color::RGB(128, 128, 0),
-            // };
-            // // Set y side to darker
-            // color = match side {
-            //     WallSide::X => color,
-            //     WallSide::Y => Color::RGB(color.r / 2, color.g / 2, color.b / 2),
-            // };
-            // canvas.set_draw_color(color);
-            // canvas.set_draw_color(Color::RGB(255, 0, 0));
-            // canvas
-            //     .draw_line(
-            //         Point::new(i as i32, draw_start),
-            //         Point::new(i as i32, draw_end),
-            //     )
-            //     .unwrap();
+            let texture = match side {
+                WallSide::X => &textures[tex_num as usize],
+                WallSide::Y => &dark_textures[tex_num as usize],
+            };
             canvas.copy(
-                &textures[tex_num as usize], 
+                texture, 
                 Rect::new(tex_x as i32, 0, 1, TEX_HEIGHT),
-                Rect::new(i as i32, draw_start, 1, draw_end as u32),
+                Rect::new(i as i32, SCREEN_HEIGHT - draw_end, 1, (draw_end - draw_start) as u32),
             ).unwrap();
         }
         // Get frame time

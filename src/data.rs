@@ -25,7 +25,7 @@ pub fn gen_textures(tex_width: u32, tex_height: u32) -> [[[u32; 64]; 64]; 8] {
             textures[3][y as usize][x as usize] = xorcolor + 256 * xorcolor + 65536 * xorcolor; //xor greyscale
             textures[4][y as usize][x as usize] = 256 * xorcolor; //xor green
             textures[5][y as usize][x as usize] =
-                65536 * 192 * ((x % 16 == 0) && (y % 16 == 0)) as u32; //red bricks
+                65536 * 192 * ((x % 16 != 0) && (y % 16 != 0)) as u32; //red bricks
             textures[6][y as usize][x as usize] = 65536 * ycolor; //red gradient
             textures[7][y as usize][x as usize] = 128 + 256 * 128 + 65536 * 128;
             //flat grey texture
