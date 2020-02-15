@@ -1,4 +1,5 @@
-// use serde::{Deserialize};
+extern crate image;
+
 use std::fs::File;
 use std::io::Read;
 
@@ -32,5 +33,15 @@ pub fn gen_textures(tex_width: u32, tex_height: u32) -> [[[u32; 64]; 64]; 8] {
         }
     }
 
+    return textures;
+}
+
+pub fn get_textures_from_file() -> Vec<Vec<u8>> {
+    let mut textures = vec![];
+    let img = image::open("./src/data/textures/eagle.png").unwrap();
+    for _ in 0..8 {
+        textures.push(img.to_rgb().into_vec());
+    }
+    
     return textures;
 }

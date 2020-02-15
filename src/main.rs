@@ -6,7 +6,6 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
-use sdl2::rect::Point;
 use sdl2::rect::Rect;
 use sdl2::render::Texture;
 use std::collections::HashSet;
@@ -61,33 +60,21 @@ pub fn main() {
 
     let mut canvas = window.into_canvas().build().unwrap();
     // Load textures
-    let texture_bits = crate::data::gen_textures(TEX_WIDTH, TEX_HEIGHT);
+    let texture_bits = crate::data::get_textures_from_file();
     let creator = canvas.texture_creator();
     let mut textures: Vec<Texture> = vec![];
     let mut dark_textures: Vec<Texture> = vec![];
     for i in texture_bits.iter() {
-        let mut texture = creator.create_texture_static(PixelFormatEnum::ARGB8888, TEX_WIDTH, TEX_HEIGHT).unwrap();
-        let mut dark_texture = creator.create_texture_static(PixelFormatEnum::ARGB8888, TEX_WIDTH, TEX_HEIGHT).unwrap();
-        let row: [u8; 64 * 64 * 4];
-        unsafe {
-            // Interpret 2d array of 32 bit values into 1d array of 8 bit
-            row = std::mem::transmute::<[[u32; 64]; 64], [u8; 64 * 64 * 4]>(*i);
-        }
-        texture.update(None, &row, (TEX_WIDTH * 4) as usize).unwrap();
+        let mut texture = creator.create_texture_static(PixelFormatEnum::RGB888, TEX_WIDTH, TEX_HEIGHT).unwrap();
+        let mut dark_texture = creator.create_texture_static(PixelFormatEnum::RGB888, TEX_WIDTH, TEX_HEIGHT).unwrap();
+        texture.update(None, &i, TEX_WIDTH as usize).unwrap();
         textures.push(texture);
-        let mut dark_bits: [[u32; 64]; 64] = [[0; 64]; 64];
-        let dark_row: [u8; 64 * 64 * 4];
         // Divide color by 2 for dark texture
-        for (x, row) in i.iter().enumerate() {
-            for (y, bit) in row.iter().enumerate() {
-                dark_bits[x as usize][y as usize] = (bit >> 1) & 8355711 as u32;
-            }
+        let mut dark_bits = vec![];
+        for byte in i {
+            dark_bits.push(byte / 2);
         }
-        unsafe {
-            // Interpret 2d array of 32 bit values into 1d array of 8 bit
-            dark_row = std::mem::transmute::<[[u32; 64]; 64], [u8; 64 * 64 * 4]>(dark_bits);
-        }
-        dark_texture.update(None, &dark_row, (TEX_WIDTH * 4) as usize).unwrap();
+        dark_texture.update(None, &dark_bits, (TEX_WIDTH * 4) as usize).unwrap();
         dark_textures.push(dark_texture);
     }
 
