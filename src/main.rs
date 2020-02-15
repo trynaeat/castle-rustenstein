@@ -65,9 +65,9 @@ pub fn main() {
     let mut textures: Vec<Texture> = vec![];
     let mut dark_textures: Vec<Texture> = vec![];
     for i in texture_bits.iter() {
-        let mut texture = creator.create_texture_static(PixelFormatEnum::RGB888, TEX_WIDTH, TEX_HEIGHT).unwrap();
-        let mut dark_texture = creator.create_texture_static(PixelFormatEnum::RGB888, TEX_WIDTH, TEX_HEIGHT).unwrap();
-        texture.update(None, &i, TEX_WIDTH as usize).unwrap();
+        let mut texture = creator.create_texture_static(PixelFormatEnum::RGBA32, TEX_WIDTH, TEX_HEIGHT).unwrap();
+        let mut dark_texture = creator.create_texture_static(PixelFormatEnum::RGBA32, TEX_WIDTH, TEX_HEIGHT).unwrap();
+        texture.update(None, &i, (TEX_WIDTH * 4) as usize).unwrap();
         textures.push(texture);
         // Divide color by 2 for dark texture
         let mut dark_bits = vec![];

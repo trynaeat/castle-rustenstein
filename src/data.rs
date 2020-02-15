@@ -40,7 +40,7 @@ pub fn get_textures_from_file() -> Vec<Vec<u8>> {
     let mut textures = vec![];
     let img = image::open("./src/data/textures/eagle.png").unwrap();
     for _ in 0..8 {
-        textures.push(img.to_rgb().into_vec());
+        textures.push(img.to_rgba().into_vec());
     }
     
     return textures;
