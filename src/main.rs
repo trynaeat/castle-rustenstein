@@ -85,11 +85,92 @@ pub fn main() {
     // Time counter for last frame
     let mut old_time: u32 = 0;
     'running: loop {
-        // canvas.set_draw_color(Color::RGB(i, 64, 255 - i));
+        // Clear screen
         canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
-        // The rest of the game loop goes here...
         // Perform raycasting
+        render_walls(&mut canvas, &player, &world_map, &textures, &dark_textures);
+        // Get frame time
+        let time = sdl_context.timer().unwrap().ticks();
+        let frame_time = (time - old_time) as f64 / 1000.0; // in seconds
+        old_time = time;
+        // Draw FPS counter
+        draw_fps(frame_time);
+        // Read keyboard state and move the player/camera accordingly
+        move_player(&mut player, &world_map, &event_pump, frame_time);
+
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => break 'running,
+                _ => {}
+            }
+        }
+
+        canvas.present();
+        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+    }
+
+    pub fn draw_fps(frame_time: f64) {
+        // TODO: draw text
+        // println!("{}", 1.0 / frame_time);
+    }
+
+    fn move_player(
+        player: &mut Player,
+        world_map: &[[u32; 24]; 24],
+        event_pump: &sdl2::EventPump,
+        frame_time: f64,
+    ) {
+        let move_speed = frame_time * MOVE_SPEED;
+        let rot_speed = frame_time * ROT_SPEED;
+        let pressed_keys: HashSet<Keycode> = event_pump
+            .keyboard_state()
+            .pressed_scancodes()
+            .filter_map(Keycode::from_scancode)
+            .collect();
+        if pressed_keys.contains(&Keycode::Up) {
+            let new_pos = player.pos
+                + Vector3::new(player.dir.x * move_speed, player.dir.y * move_speed, 0.0);
+            if world_map[new_pos.x as usize][new_pos.y as usize] == 0 {
+                player.pos = new_pos;
+            }
+        }
+        if pressed_keys.contains(&Keycode::Down) {
+            let new_pos = player.pos
+                - Vector3::new(player.dir.x * move_speed, player.dir.y * move_speed, 0.0);
+            if world_map[new_pos.x as usize][new_pos.y as usize] == 0 {
+                player.pos = new_pos;
+            }
+        }
+        if pressed_keys.contains(&Keycode::Left) {
+            player.dir = Vector2::new(
+                player.dir.x * rot_speed.cos() - player.dir.y * rot_speed.sin(),
+                player.dir.x * rot_speed.sin() + player.dir.y * rot_speed.cos(),
+            );
+            player.camera_plane = Vector2::new(
+                player.camera_plane.x * rot_speed.cos() - player.camera_plane.y * rot_speed.sin(),
+                player.camera_plane.x * rot_speed.sin() + player.camera_plane.y * rot_speed.cos(),
+            );
+        }
+        if pressed_keys.contains(&Keycode::Right) {
+            player.dir = Vector2::new(
+                player.dir.x * (-rot_speed).cos() - player.dir.y * (-rot_speed).sin(),
+                player.dir.x * (-rot_speed).sin() + player.dir.y * (-rot_speed).cos(),
+            );
+            player.camera_plane = Vector2::new(
+                player.camera_plane.x * (-rot_speed).cos()
+                    - player.camera_plane.y * (-rot_speed).sin(),
+                player.camera_plane.x * (-rot_speed).sin()
+                    + player.camera_plane.y * (-rot_speed).cos(),
+            );
+        }
+    }
+
+    fn render_walls(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player, world_map: &[[u32; 24]; 24], textures: &Vec<Texture>, dark_textures: &Vec<Texture>) {
         for i in 0..SCREEN_WIDTH {
             // Calculate incoming ray position/direction
             let camera_x: f64 = 2.0 * i as f64 / SCREEN_WIDTH as f64 - 1.0;
@@ -194,82 +275,6 @@ pub fn main() {
                 Rect::new(tex_x as i32, tex_strip_start, 1, tex_strip_height as u32),
                 Rect::new(i as i32, SCREEN_HEIGHT - draw_end, 1, (draw_end - draw_start) as u32),
             ).unwrap();
-        }
-        // Get frame time
-        let time = sdl_context.timer().unwrap().ticks();
-        let frame_time = (time - old_time) as f64 / 1000.0; // in seconds
-        old_time = time;
-        draw_fps(frame_time);
-        move_player(&mut player, &world_map, &event_pump, frame_time);
-
-        for event in event_pump.poll_iter() {
-            match event {
-                Event::Quit { .. }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => break 'running,
-                _ => {}
-            }
-        }
-
-        canvas.present();
-        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
-    }
-
-    pub fn draw_fps(frame_time: f64) {
-        // TODO: draw text
-        // println!("{}", 1.0 / frame_time);
-    }
-
-    fn move_player(
-        player: &mut Player,
-        world_map: &[[u32; 24]; 24],
-        event_pump: &sdl2::EventPump,
-        frame_time: f64,
-    ) {
-        let move_speed = frame_time * MOVE_SPEED;
-        let rot_speed = frame_time * ROT_SPEED;
-        let pressed_keys: HashSet<Keycode> = event_pump
-            .keyboard_state()
-            .pressed_scancodes()
-            .filter_map(Keycode::from_scancode)
-            .collect();
-        if pressed_keys.contains(&Keycode::Up) {
-            let new_pos = player.pos
-                + Vector3::new(player.dir.x * move_speed, player.dir.y * move_speed, 0.0);
-            if world_map[new_pos.x as usize][new_pos.y as usize] == 0 {
-                player.pos = new_pos;
-            }
-        }
-        if pressed_keys.contains(&Keycode::Down) {
-            let new_pos = player.pos
-                - Vector3::new(player.dir.x * move_speed, player.dir.y * move_speed, 0.0);
-            if world_map[new_pos.x as usize][new_pos.y as usize] == 0 {
-                player.pos = new_pos;
-            }
-        }
-        if pressed_keys.contains(&Keycode::Left) {
-            player.dir = Vector2::new(
-                player.dir.x * rot_speed.cos() - player.dir.y * rot_speed.sin(),
-                player.dir.x * rot_speed.sin() + player.dir.y * rot_speed.cos(),
-            );
-            player.camera_plane = Vector2::new(
-                player.camera_plane.x * rot_speed.cos() - player.camera_plane.y * rot_speed.sin(),
-                player.camera_plane.x * rot_speed.sin() + player.camera_plane.y * rot_speed.cos(),
-            );
-        }
-        if pressed_keys.contains(&Keycode::Right) {
-            player.dir = Vector2::new(
-                player.dir.x * (-rot_speed).cos() - player.dir.y * (-rot_speed).sin(),
-                player.dir.x * (-rot_speed).sin() + player.dir.y * (-rot_speed).cos(),
-            );
-            player.camera_plane = Vector2::new(
-                player.camera_plane.x * (-rot_speed).cos()
-                    - player.camera_plane.y * (-rot_speed).sin(),
-                player.camera_plane.x * (-rot_speed).sin()
-                    + player.camera_plane.y * (-rot_speed).cos(),
-            );
         }
     }
 }
