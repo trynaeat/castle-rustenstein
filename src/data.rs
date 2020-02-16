@@ -1,7 +1,11 @@
 extern crate image;
+extern crate glob;
+
+use glob::glob;
 
 use std::fs::File;
 use std::io::Read;
+use std::error::Error;
 
 pub fn load_map(filename: &str) -> [[u32; 24]; 24] {
     let mut file = File::open(filename).unwrap();
@@ -36,12 +40,17 @@ pub fn gen_textures(tex_width: u32, tex_height: u32) -> [[[u32; 64]; 64]; 8] {
     return textures;
 }
 
-pub fn get_textures_from_file() -> Vec<Vec<u8>> {
+pub fn get_textures_from_file() -> Result<Vec<Vec<u8>>, Box<dyn Error>> {
     let mut textures = vec![];
-    let img = image::open("./src/data/textures/eagle.png").unwrap();
-    for _ in 0..8 {
-        textures.push(img.to_rgba().into_vec());
+    for entry in glob("./src/data/textures/walls/*.png")? {
+        match entry {
+            Ok(path) => {
+                let img = image::open(path)?;
+                textures.push(img.to_rgba().into_vec());
+            },
+            Err(e) => return Err(e.into()),
+        }
     }
     
-    return textures;
+    return Ok(textures);
 }

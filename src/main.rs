@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 extern crate cgmath;
 extern crate sdl2;
 mod data;
@@ -60,7 +62,7 @@ pub fn main() {
 
     let mut canvas = window.into_canvas().build().unwrap();
     // Load textures
-    let texture_bits = crate::data::get_textures_from_file();
+    let texture_bits = crate::data::get_textures_from_file().unwrap();
     let creator = canvas.texture_creator();
     let mut textures: Vec<Texture> = vec![];
     let mut dark_textures: Vec<Texture> = vec![];
