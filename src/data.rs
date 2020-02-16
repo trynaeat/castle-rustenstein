@@ -42,14 +42,17 @@ pub fn gen_textures(tex_width: u32, tex_height: u32) -> [[[u32; 64]; 64]; 8] {
 
 pub fn get_textures_from_file() -> Result<Vec<Vec<u8>>, Box<dyn Error>> {
     let mut textures = vec![];
-    for entry in glob("./src/data/textures/walls/*.png")? {
-        match entry {
-            Ok(path) => {
-                let img = image::open(path)?;
-                textures.push(img.to_rgba().into_vec());
-            },
-            Err(e) => return Err(e.into()),
-        }
+    let mut v = glob("./src/data/textures/walls/*.png")?
+        .filter_map(Result::ok)
+        .map(|p| match p.to_str() {
+            Some(s) => String::from(s),
+            None => String::from(""),
+        })
+        .collect::<Vec<_>>();
+    v.sort_by(|a, b| a.cmp(b));
+    for path in v {
+        let img = image::open(path)?;
+        textures.push(img.to_rgba().into_vec());
     }
     
     return Ok(textures);
