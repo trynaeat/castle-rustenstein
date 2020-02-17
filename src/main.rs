@@ -97,6 +97,8 @@ pub fn main() {
         // Clear screen
         canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
+        // Draw floor
+        render_floor(&mut canvas, &player, &textures);
         // Perform raycasting
         render_walls(&mut canvas, &player, &world_map, &textures, &dark_textures);
         // Get frame time
@@ -292,6 +294,38 @@ pub fn main() {
                 Rect::new(tex_x as i32, tex_strip_start, 1, tex_strip_height as u32),
                 Rect::new(i as i32, SCREEN_HEIGHT - draw_end, 1, (draw_end - draw_start) as u32),
             ).unwrap();
+        }
+    }
+
+    fn render_floor(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player, textures: &Vec<Texture>) {
+        for y in 0..SCREEN_HEIGHT {
+            let left_ray = player.dir - player.camera_plane;
+            let right_ray = player.dir + player.camera_plane;
+
+            // Current y distance to middle of screen
+            let p = y - SCREEN_HEIGHT / 2;
+            // Height of camera
+            let pos_z = 0.5 * SCREEN_HEIGHT as f64;
+            // Horizontal distance from camera to floor for current row
+            let row_dist = pos_z / p as f64;
+
+            let floor_pos = Vector2::new(
+                player.pos.x + row_dist * left_ray.x,
+                player.pos.y + row_dist * left_ray.y,
+            );
+
+            // Take interger portion for cell #
+            let floor_cell = Vector2::new(
+                floor_pos.x as i32,
+                floor_pos.y as i32,
+            );
+
+            // Get fractional part of coordiate (how far in cell)
+            let tex_y = (TEX_HEIGHT as f64 * (floor_pos.y - floor_cell.y as f64)) as i32 & (TEX_HEIGHT as i32 - 1);
+
+            for x in 0..24 {
+                canvas.copy(&textures[1], Rect::new(0, tex_y, TEX_WIDTH, 1), Rect::new(x * TEX_WIDTH as i32, y, SCREEN_WIDTH as u32 / 24, 1));
+            }
         }
     }
 
