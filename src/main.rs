@@ -18,6 +18,7 @@ use std::str;
 
 use cgmath::Vector2;
 use cgmath::Vector3;
+use cgmath::Angle;
 
 const TEX_WIDTH: u32 = 64;
 const TEX_HEIGHT: u32 = 64;
@@ -95,10 +96,12 @@ pub fn main() {
     let mut fps = 0.0;
     'running: loop {
         // Clear screen
-        canvas.set_draw_color(Color::RGB(0, 0, 0));
+        canvas.set_draw_color(Color::RGB(128, 128, 128));
         canvas.clear();
         // Draw floor
-        render_floor(&mut canvas, &player, &textures);
+        // render_floor(&mut canvas, &player, &textures);
+        // Draw ceiling
+        render_ceiling(&mut canvas);
         // Perform raycasting
         render_walls(&mut canvas, &player, &world_map, &textures, &dark_textures);
         // Get frame time
@@ -322,11 +325,24 @@ pub fn main() {
 
             // Get fractional part of coordiate (how far in cell)
             let tex_y = (TEX_HEIGHT as f64 * (floor_pos.y - floor_cell.y as f64)) as i32 & (TEX_HEIGHT as i32 - 1);
+            let tex_width = (TEX_WIDTH as f64 / row_dist.max(1.0).abs()) as i32;
+            let angle: cgmath::Rad<f64> = Angle::atan2(player.dir.x, player.dir.y);
+            let angle: cgmath::Deg<f64> = cgmath::Deg::from(angle);
 
-            for x in 0..24 {
-                canvas.copy(&textures[1], Rect::new(0, tex_y, TEX_WIDTH, 1), Rect::new(x * TEX_WIDTH as i32, y, SCREEN_WIDTH as u32 / 24, 1));
-            }
+            // for x in 0..SCREEN_WIDTH {
+            //     // canvas.copy_ex(&textures[1], Rect::new(0, tex_y, TEX_WIDTH, 1), Rect::new(x * tex_width, y, tex_width as u32, 1), 0.0, None, false, false);
+            // }
         }
+    }
+
+    fn render_ceiling (canvas: &mut sdl2::render::Canvas<sdl2::video::Window>) {
+        canvas.set_draw_color(Color::RGB(64, 64, 64));
+        canvas.fill_rect(Rect::new(
+            0,
+            0,
+            SCREEN_WIDTH as u32,
+            SCREEN_HEIGHT as u32 / 2,
+        )).unwrap();
     }
 
     fn generate_font_textures (texture_creator: &sdl2::render::TextureCreator<WindowContext>) -> HashMap<char, Texture> {
