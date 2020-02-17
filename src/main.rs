@@ -23,8 +23,8 @@ use cgmath::Angle;
 
 const TEX_WIDTH: u32 = 64;
 const TEX_HEIGHT: u32 = 64;
-const SCREEN_WIDTH: i32 = 800;
-const SCREEN_HEIGHT: i32 = 450;
+const SCREEN_WIDTH: i32 = 640;
+const SCREEN_HEIGHT: i32 = 480;
 const WALL_HEIGHT_SCALE: i32 = 1;
 const MOVE_SPEED: f64 = 4.0;
 const ROT_SPEED: f64 = 2.0;
@@ -72,9 +72,11 @@ pub fn main() {
     // Load textures
     // Wall/Floor textures
     let texture_bits = crate::data::get_textures_from_file().unwrap();
+    let raw_floor = &texture_bits[1];
     let creator = canvas.texture_creator();
     let mut textures: Vec<Texture> = vec![];
     let mut dark_textures: Vec<Texture> = vec![];
+    let mut floor_texture = creator.create_texture_streaming(PixelFormatEnum::RGBA32, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32).unwrap();
     for i in texture_bits.iter() {
         let mut texture = creator.create_texture_static(PixelFormatEnum::RGBA32, TEX_WIDTH, TEX_HEIGHT).unwrap();
         let mut dark_texture = creator.create_texture_static(PixelFormatEnum::RGBA32, TEX_WIDTH, TEX_HEIGHT).unwrap();
@@ -104,9 +106,10 @@ pub fn main() {
         canvas.clear();
         // Draw floor
         // Draw ceiling
-        render_ceiling(&mut canvas);
+        render_floor(&mut canvas, &player, &mut floor_texture, raw_floor);
+        // render_ceiling(&mut canvas);
         // Perform raycasting
-        render_walls(&mut canvas, &player, &world_map, &textures, &dark_textures);
+        render_walls(&mut canvas, &player, &world_map, &textures, &dark_textures, &mut floor_texture);
         // Get frame time
         let time = sdl_context.timer().unwrap().ticks();
         let frame_time = (time - old_time) as f64 / 1000.0; // in seconds
@@ -195,7 +198,7 @@ pub fn main() {
         }
     }
 
-    fn render_walls(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player, world_map: &[[u32; 24]; 24], textures: &Vec<Texture>, dark_textures: &Vec<Texture>) {
+    fn render_walls(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player, world_map: &[[u32; 24]; 24], textures: &Vec<Texture>, dark_textures: &Vec<Texture>, floor_texture: &mut Texture) {
         for i in 0..SCREEN_WIDTH {
             // Calculate incoming ray position/direction
             let camera_x: f64 = 2.0 * i as f64 / SCREEN_WIDTH as f64 - 1.0;
@@ -300,13 +303,14 @@ pub fn main() {
                 Rect::new(tex_x as i32, tex_strip_start, 1, tex_strip_height as u32),
                 Rect::new(i as i32, SCREEN_HEIGHT - draw_end, 1, (draw_end - draw_start) as u32),
             ).unwrap();
-
-            render_floor(i, draw_end, ray_dir, canvas, player, textures);
         }
     }
 
-    fn render_floor(x: i32, y_start: i32, ray: Vector2<f64>, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player, textures: &Vec<Texture>) {
-        for y in y_start..SCREEN_HEIGHT {
+    fn render_floor(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player, floor_texture: &mut Texture, raw_floor: &[u8]) {
+        let new_data = &mut vec![128; (SCREEN_WIDTH * SCREEN_HEIGHT * 4) as usize];
+        let left_ray = player.dir - player.camera_plane;
+        let right_ray = player.dir + player.camera_plane;
+        for y in SCREEN_HEIGHT / 2..SCREEN_HEIGHT {
             // Current y distance to middle of screen
             let p = y - SCREEN_HEIGHT / 2;
             // Height of camera
@@ -314,28 +318,43 @@ pub fn main() {
             // Horizontal distance from camera to floor for current row
             let row_dist = pos_z / p as f64;
 
-            let floor_pos = Vector2::new(
-                player.pos.x + row_dist * ray.x,
-                player.pos.y + row_dist * ray.y,
+            let floor_step = (right_ray - left_ray) * row_dist / SCREEN_WIDTH as f64;
+
+            let mut floor_pos = Vector2::new(
+                player.pos.x + row_dist * left_ray.x,
+                player.pos.y + row_dist * left_ray.y,
             );
 
-            // Take interger portion for cell #
-            let floor_cell = Vector2::new(
-                floor_pos.x as i32,
-                floor_pos.y as i32,
-            );
+            for x in 0..SCREEN_WIDTH {
+                // Take interger portion for cell #
+                let floor_cell = Vector2::new(
+                    floor_pos.x as i32,
+                    floor_pos.y as i32,
+                );
 
-            // Get fractional part of coordiate (how far in cell)
-            let tex_x = (TEX_WIDTH as f64 * (floor_pos.x - floor_cell.x as f64)) as i32;
-            let tex_y = (TEX_HEIGHT as f64 * (floor_pos.y - floor_cell.y as f64)) as i32;
+                // Get fractional part of coordiate (how far in cell)
+                let tex_x = (TEX_WIDTH as f64 * (floor_pos.x - floor_cell.x as f64)) as u32 & (TEX_WIDTH - 1);
+                let tex_y = (TEX_HEIGHT as f64 * (floor_pos.y - floor_cell.y as f64)) as u32 & (TEX_HEIGHT - 1);
 
-            
-            // canvas.copy(&textures[1], Rect::new(tex_x, tex_y, 1, 1), Rect::new(x, y, 1, 1)).unwrap();
+                floor_pos = floor_pos + floor_step;
 
-            // for x in 0..SCREEN_WIDTH {
-            //     // canvas.copy_ex(&textures[1], Rect::new(0, tex_y, TEX_WIDTH, 1), Rect::new(x * tex_width, y, tex_width as u32, 1), 0.0, None, false, false);
-            // }
+                unsafe {
+                    let tex_start = &raw_floor[((TEX_WIDTH * tex_y + tex_x) * 4) as usize] as *const u8;
+                    let floor_start = &mut new_data[((y * SCREEN_WIDTH + x) * 4) as usize] as *mut u8;
+                    std::ptr::copy(tex_start, floor_start, 4);
+                }
+                // let color = raw_floor[tex_start as usize];
+                // new_data[(y * SCREEN_WIDTH + x) as usize] = color;
+            }
         }
+
+        // TODO get floor pixels, edit texture here
+        floor_texture.with_lock(None, |mut dat, pitch| {
+            dat.copy_from_slice(new_data);
+        });
+        // floor_texture.update(None, &new_data, (SCREEN_WIDTH * 4) as usize).unwrap();
+
+        canvas.copy(floor_texture, Rect::new(0, SCREEN_HEIGHT / 2, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32 / 2), Rect::new(0, SCREEN_HEIGHT / 2, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32 / 2));
     }
 
     fn render_ceiling (canvas: &mut sdl2::render::Canvas<sdl2::video::Window>) {
