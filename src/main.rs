@@ -91,6 +91,8 @@ pub fn main() {
     let mut event_pump = sdl_context.event_pump().unwrap();
     // Time counter for last frame
     let mut old_time: u32 = 0;
+    let mut frames = 0;
+    let mut fps = 0.0;
     'running: loop {
         // Clear screen
         canvas.set_draw_color(Color::RGB(0, 0, 0));
@@ -102,7 +104,10 @@ pub fn main() {
         let frame_time = (time - old_time) as f64 / 1000.0; // in seconds
         old_time = time;
         // Draw FPS counter
-        draw_fps(&mut canvas, frame_time, &font_textures);
+        if frames % 30 == 0 {
+            fps = get_fps(frame_time);
+        }
+        draw_fps(&mut canvas, fps, &font_textures);
         // Read keyboard state and move the player/camera accordingly
         move_player(&mut player, &world_map, &event_pump, frame_time);
 
@@ -119,13 +124,16 @@ pub fn main() {
 
         canvas.present();
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+        frames += 1;
     }
 
-    pub fn draw_fps(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, frame_time: f64, font_textures: &HashMap<char, Texture>) {
-        // TODO: draw text
-        // println!("{}", 1.0 / frame_time);
-        render_string("Hello, World!", Rect::new(20, 20, 100, 100), canvas, font_textures);
+    pub fn draw_fps(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, fps: f64, font_textures: &HashMap<char, Texture>) {
+        render_string(&format!("fps: {0:.1}", fps), Rect::new(30, 30, 20, 35), canvas, font_textures);
         let m = canvas.window_mut();
+    }
+
+    pub fn get_fps (frame_time: f64) -> f64 {
+        return 1.0 / frame_time;
     }
 
     fn move_player(
@@ -290,10 +298,10 @@ pub fn main() {
     fn generate_font_textures (texture_creator: &sdl2::render::TextureCreator<WindowContext>) -> HashMap<char, Texture> {
         let mut textures = HashMap::new();
         let ttf = sdl2::ttf::init().unwrap();
-        let font = ttf.load_font("./src/data/fonts/ARIAL.TTF", 128).unwrap();
-        let valid_chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        let font = ttf.load_font("./src/data/fonts/ARIAL.TTF", 35).unwrap();
+        let valid_chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ .:";
         for c in valid_chars.chars() {
-            let surface = font.render(str::from_utf8(&[(c as u8)]).unwrap()).blended(Color::RGBA(255, 0, 0, 255)).unwrap();
+            let surface = font.render(str::from_utf8(&[(c as u8)]).unwrap()).blended(Color::RGBA(255, 255, 0, 255)).unwrap();
             let texture = texture_creator.create_texture_from_surface(surface).unwrap();
             textures.insert(c, texture);
         }
@@ -302,8 +310,15 @@ pub fn main() {
     }
 
     fn render_string (s: &str, position: Rect, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, font_textures: &HashMap<char, Texture>) {
+        let mut start_x = position.x;
         for c in s.chars() {
-            canvas.copy(&font_textures.get(&c).unwrap(), None, position).unwrap();
+            if c == ' ' {
+                start_x += 10;
+                continue;
+            }
+            let width = &font_textures.get(&c).unwrap().query().width;
+            canvas.copy(&font_textures.get(&c).unwrap(), None, Rect::new(start_x, position.y, position.width(), position.height())).unwrap();
+            start_x += ((*width as i32) + 5);
         }
     }
 }
