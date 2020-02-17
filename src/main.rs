@@ -9,6 +9,7 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
+use sdl2::rect::Point;
 use sdl2::render::Texture;
 use sdl2::video::WindowContext;
 use std::collections::HashSet;
@@ -22,8 +23,8 @@ use cgmath::Angle;
 
 const TEX_WIDTH: u32 = 64;
 const TEX_HEIGHT: u32 = 64;
-const SCREEN_WIDTH: i32 = 1920;
-const SCREEN_HEIGHT: i32 = 1080;
+const SCREEN_WIDTH: i32 = 800;
+const SCREEN_HEIGHT: i32 = 450;
 const WALL_HEIGHT_SCALE: i32 = 1;
 const MOVE_SPEED: f64 = 4.0;
 const ROT_SPEED: f64 = 2.0;
@@ -54,6 +55,7 @@ pub fn main() {
         dir: Vector2::new(-1.0, 0.0),
         camera_plane: Vector2::new(0.0, 0.66),
     };
+
     // SDL setup and loop
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
@@ -61,10 +63,12 @@ pub fn main() {
     let window = video_subsystem
         .window("rust-sdl2 demo", SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32)
         .position_centered()
+        .resizable()
         .build()
         .unwrap();
 
     let mut canvas = window.into_canvas().build().unwrap();
+    canvas.set_logical_size(SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32);
     // Load textures
     // Wall/Floor textures
     let texture_bits = crate::data::get_textures_from_file().unwrap();
@@ -99,7 +103,6 @@ pub fn main() {
         canvas.set_draw_color(Color::RGB(128, 128, 128));
         canvas.clear();
         // Draw floor
-        // render_floor(&mut canvas, &player, &textures);
         // Draw ceiling
         render_ceiling(&mut canvas);
         // Perform raycasting
@@ -128,7 +131,7 @@ pub fn main() {
         }
 
         canvas.present();
-        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+        // ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
         frames += 1;
     }
 
@@ -297,14 +300,13 @@ pub fn main() {
                 Rect::new(tex_x as i32, tex_strip_start, 1, tex_strip_height as u32),
                 Rect::new(i as i32, SCREEN_HEIGHT - draw_end, 1, (draw_end - draw_start) as u32),
             ).unwrap();
+
+            render_floor(i, draw_end, ray_dir, canvas, player, textures);
         }
     }
 
-    fn render_floor(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player, textures: &Vec<Texture>) {
-        for y in 0..SCREEN_HEIGHT {
-            let left_ray = player.dir - player.camera_plane;
-            let right_ray = player.dir + player.camera_plane;
-
+    fn render_floor(x: i32, y_start: i32, ray: Vector2<f64>, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player, textures: &Vec<Texture>) {
+        for y in y_start..SCREEN_HEIGHT {
             // Current y distance to middle of screen
             let p = y - SCREEN_HEIGHT / 2;
             // Height of camera
@@ -313,8 +315,8 @@ pub fn main() {
             let row_dist = pos_z / p as f64;
 
             let floor_pos = Vector2::new(
-                player.pos.x + row_dist * left_ray.x,
-                player.pos.y + row_dist * left_ray.y,
+                player.pos.x + row_dist * ray.x,
+                player.pos.y + row_dist * ray.y,
             );
 
             // Take interger portion for cell #
@@ -324,10 +326,11 @@ pub fn main() {
             );
 
             // Get fractional part of coordiate (how far in cell)
-            let tex_y = (TEX_HEIGHT as f64 * (floor_pos.y - floor_cell.y as f64)) as i32 & (TEX_HEIGHT as i32 - 1);
-            let tex_width = (TEX_WIDTH as f64 / row_dist.max(1.0).abs()) as i32;
-            let angle: cgmath::Rad<f64> = Angle::atan2(player.dir.x, player.dir.y);
-            let angle: cgmath::Deg<f64> = cgmath::Deg::from(angle);
+            let tex_x = (TEX_WIDTH as f64 * (floor_pos.x - floor_cell.x as f64)) as i32;
+            let tex_y = (TEX_HEIGHT as f64 * (floor_pos.y - floor_cell.y as f64)) as i32;
+
+            
+            // canvas.copy(&textures[1], Rect::new(tex_x, tex_y, 1, 1), Rect::new(x, y, 1, 1)).unwrap();
 
             // for x in 0..SCREEN_WIDTH {
             //     // canvas.copy_ex(&textures[1], Rect::new(0, tex_y, TEX_WIDTH, 1), Rect::new(x * tex_width, y, tex_width as u32, 1), 0.0, None, false, false);
