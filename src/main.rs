@@ -23,8 +23,8 @@ use cgmath::Angle;
 
 const TEX_WIDTH: u32 = 64;
 const TEX_HEIGHT: u32 = 64;
-const SCREEN_WIDTH: i32 = 640;
-const SCREEN_HEIGHT: i32 = 480;
+const SCREEN_WIDTH: i32 = 800;
+const SCREEN_HEIGHT: i32 = 600;
 const WALL_HEIGHT_SCALE: i32 = 1;
 const MOVE_SPEED: f64 = 4.0;
 const ROT_SPEED: f64 = 2.0;
@@ -48,7 +48,7 @@ enum WallSide {
 
 pub fn main() {
     // Init map
-    let world_map = crate::data::load_map("./src/data/maps/map_textured.json");
+    let world_map = crate::data::load_map("./data/maps/map_textured.json");
     // Init Player and Camera
     let mut player = Player {
         pos: Vector3::new(22.0, 11.5, 0.0),
@@ -370,7 +370,7 @@ pub fn main() {
     fn generate_font_textures (texture_creator: &sdl2::render::TextureCreator<WindowContext>) -> HashMap<char, Texture> {
         let mut textures = HashMap::new();
         let ttf = sdl2::ttf::init().unwrap();
-        let font = ttf.load_font("./src/data/fonts/ARIAL.TTF", 35).unwrap();
+        let font = ttf.load_font("./data/fonts/ARIAL.TTF", 35).unwrap();
         let valid_chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ .:";
         for c in valid_chars.chars() {
             let surface = font.render(str::from_utf8(&[(c as u8)]).unwrap()).blended(Color::RGBA(255, 255, 0, 255)).unwrap();

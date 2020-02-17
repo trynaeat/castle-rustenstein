@@ -42,7 +42,7 @@ pub fn gen_textures(tex_width: u32, tex_height: u32) -> [[[u32; 64]; 64]; 8] {
 
 pub fn get_textures_from_file() -> Result<Vec<Vec<u8>>, Box<dyn Error>> {
     let mut textures = vec![];
-    let mut v = glob("./src/data/textures/walls/*.png")?
+    let mut v = glob("./data/textures/walls/*.png")?
         .filter_map(Result::ok)
         .map(|p| match p.to_str() {
             Some(s) => String::from(s),
