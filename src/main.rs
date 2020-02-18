@@ -25,7 +25,7 @@ const TEX_WIDTH: u32 = 64;
 const TEX_HEIGHT: u32 = 64;
 const SCREEN_WIDTH: i32 = 800;
 const SCREEN_HEIGHT: i32 = 600;
-const WALL_HEIGHT_SCALE: i32 = 1;
+const WALL_HEIGHT_SCALE: f64 = 1.0;
 const MOVE_SPEED: f64 = 4.0;
 const ROT_SPEED: f64 = 2.0;
 
@@ -43,10 +43,10 @@ enum WallSide {
 
 pub fn main() {
     // Init map
-    let world_map = WorldMap::load_map("map_textured").unwrap();
+    let world_map = WorldMap::load_map("test_map_small").unwrap();
     // Init Player and Camera
     let mut player = Player {
-        pos: Vector3::new(22.0, 11.5, 0.0),
+        pos: Vector3::new(2.0, 3.5, 0.0),
         dir: Vector2::new(-1.0, 0.0),
         camera_plane: Vector2::new(0.0, 0.66),
     };
@@ -250,7 +250,7 @@ pub fn main() {
             };
             // Calculate height of line
             let line_height =
-                (WALL_HEIGHT_SCALE as f64 * SCREEN_HEIGHT as f64 / perp_wall_dist) as i32;
+                (WALL_HEIGHT_SCALE * SCREEN_HEIGHT as f64 / perp_wall_dist) as i32;
             // Get lowest/highest pixel to draw (drawing walls in middle of screen)
             let mut draw_start = -1 * line_height / 2 + SCREEN_HEIGHT / 2;
             if draw_start < 0 {
@@ -327,7 +327,8 @@ pub fn main() {
                     floor_pos.y as i32,
                 );
 
-                // let map_cell = world_map.get_wall_cell(floor_cell.x as u32, floor_cell.y as u32);
+                let f_cell = world_map.get_floor_cell(floor_cell.x as u32 & (world_map.width - 1), floor_cell.y as u32 & (world_map.height - 1));
+                let c_cell = world_map.get_ceil_cell(floor_cell.x as u32 & (world_map.width - 1), floor_cell.y as u32 & (world_map.height - 1));
 
                 // Get fractional part of coordiate (how far in cell)
                 let tex_x = (TEX_WIDTH as f64 * (floor_pos.x - floor_cell.x as f64)) as u32 & (TEX_WIDTH - 1);
@@ -339,9 +340,14 @@ pub fn main() {
                 // One RGBA pixel = 4 bytes, so we copy 4 bytes from src texture to destination
                 // Trust me...
                 unsafe {
-                    let tex_start = &raw_textures[0][((TEX_WIDTH * tex_y + tex_x) * 4) as usize] as *const u8;
+                    // Floor
+                    let tex_start = &raw_textures[f_cell as usize][((TEX_WIDTH * tex_y + tex_x) * 4) as usize] as *const u8;
                     let floor_start = &mut new_data[((y * SCREEN_WIDTH + x) * 4) as usize] as *mut u8;
                     std::ptr::copy(tex_start, floor_start, 4);
+                    // Ceiling
+                    let tex_start = &raw_textures[c_cell as usize][((TEX_WIDTH * tex_y + tex_x) * 4) as usize] as *const u8;
+                    let ceil_start = &mut new_data[(((SCREEN_HEIGHT - y) * SCREEN_WIDTH + x) * 4) as usize] as *mut u8;
+                    std::ptr::copy(tex_start, ceil_start, 4);
                 }
             }
         }
@@ -350,7 +356,7 @@ pub fn main() {
             dat.copy_from_slice(new_data);
         }).unwrap();
 
-        canvas.copy(floor_texture, Rect::new(0, SCREEN_HEIGHT / 2, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32 / 2), Rect::new(0, SCREEN_HEIGHT / 2, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32 / 2)).unwrap();
+        canvas.copy(floor_texture, None, None).unwrap();
     }
 
     fn render_ceiling (canvas: &mut sdl2::render::Canvas<sdl2::video::Window>) {

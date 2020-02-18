@@ -10,8 +10,8 @@ use std::error::Error;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WorldMap {
-    height: u32,
-    width: u32,
+    pub height: u32,
+    pub width: u32,
     wall_grid: Vec<Vec<u32>>,
     floor_grid: Vec<Vec<u32>>,
     ceil_grid: Vec<Vec<u32>>,
@@ -25,8 +25,6 @@ impl WorldMap {
         file.read_to_string(&mut data)?;
 
         let map: WorldMap = serde_json::from_str(&data)?;
-
-        println!("{:?}", map);
 
         return Ok(map);
     }
@@ -45,13 +43,13 @@ impl WorldMap {
         return self.wall_grid[x as usize][y as usize];
     }
 
-    // pub fn get_floor_cell(&self, x: u32, y: u32) -> u32 {
-    //     return self.ceil_grid[(self.width * y + x) as usize];
-    // }
+    pub fn get_floor_cell(&self, x: u32, y: u32) -> u32 {
+        return self.floor_grid[x as usize][y as usize];
+    }
 
-    // pub fn get_ceil_cell(&self, x: u32, y: u32) -> u32 {
-    //     return self.floor_grid[(self.width * y + x) as usize];
-    // }
+    pub fn get_ceil_cell(&self, x: u32, y: u32) -> u32 {
+        return self.ceil_grid[x as usize][y as usize];
+    }
 }
 
 // Procedurally generate some basic textures
