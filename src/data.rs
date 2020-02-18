@@ -2,17 +2,56 @@ extern crate image;
 extern crate glob;
 
 use glob::glob;
+use serde::{Serialize, Deserialize};
 
 use std::fs::File;
 use std::io::Read;
 use std::error::Error;
 
-pub fn load_map(filename: &str) -> [[u32; 24]; 24] {
-    let mut file = File::open(filename).unwrap();
-    let mut data = String::new();
-    file.read_to_string(&mut data).unwrap();
+#[derive(Serialize, Deserialize, Debug)]
+pub struct WorldMap {
+    height: u32,
+    width: u32,
+    wall_grid: Vec<Vec<u32>>,
+    floor_grid: Vec<Vec<u32>>,
+    ceil_grid: Vec<Vec<u32>>,
+}
 
-    return serde_json::from_str(&data).unwrap();
+impl WorldMap {
+    pub fn load_map(mapname: &str) -> Result<WorldMap, Box<dyn Error>> {
+        let path = format!("./data/maps/{}/{}.json", mapname, mapname);
+        let mut file = File::open(path)?;
+        let mut data = String::new();
+        file.read_to_string(&mut data)?;
+
+        let map: WorldMap = serde_json::from_str(&data)?;
+
+        println!("{:?}", map);
+
+        return Ok(map);
+    }
+
+    // pub fn load_map(mapname: &str) -> Result<WorldMap, Box<dyn Error>> {
+    //     return Ok(WorldMap{
+    //         height: 24,
+    //         width: 24,
+    //         wall_grid: vec![],
+    //         floor_grid: vec![],
+    //         ceil_grid: vec![],
+    //     });
+    // }
+
+    pub fn get_wall_cell(&self, x: u32, y: u32) -> u32 {
+        return self.wall_grid[x as usize][y as usize];
+    }
+
+    // pub fn get_floor_cell(&self, x: u32, y: u32) -> u32 {
+    //     return self.ceil_grid[(self.width * y + x) as usize];
+    // }
+
+    // pub fn get_ceil_cell(&self, x: u32, y: u32) -> u32 {
+    //     return self.floor_grid[(self.width * y + x) as usize];
+    // }
 }
 
 // Procedurally generate some basic textures

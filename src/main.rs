@@ -4,6 +4,8 @@ extern crate cgmath;
 extern crate sdl2;
 mod data;
 
+use crate::data::WorldMap;
+
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
@@ -14,6 +16,7 @@ use sdl2::video::WindowContext;
 use std::collections::HashSet;
 use std::collections::HashMap;
 use std::str;
+use std::io::{self, Write};
 
 use cgmath::Vector2;
 use cgmath::Vector3;
@@ -32,11 +35,6 @@ struct Player {
     camera_plane: Vector2<f64>,
 }
 
-struct MapGrid {
-    x: i32,
-    y: i32,
-}
-
 #[derive(PartialEq)]
 enum WallSide {
     X,
@@ -45,7 +43,7 @@ enum WallSide {
 
 pub fn main() {
     // Init map
-    let world_map = crate::data::load_map("./data/maps/map_textured.json");
+    let world_map = WorldMap::load_map("map_textured").unwrap();
     // Init Player and Camera
     let mut player = Player {
         pos: Vector3::new(22.0, 11.5, 0.0),
@@ -69,7 +67,7 @@ pub fn main() {
     // Load textures
     // Wall/Floor textures
     let texture_bits = crate::data::get_textures_from_file().unwrap();
-    let raw_floor = &texture_bits[1];
+    let raw_textures = &texture_bits;
     let creator = canvas.texture_creator();
     let mut textures: Vec<Texture> = vec![];
     let mut dark_textures: Vec<Texture> = vec![];
@@ -103,7 +101,7 @@ pub fn main() {
         canvas.clear();
         // Draw floor
         // Draw ceiling
-        render_floor(&mut canvas, &player, &mut floor_texture, raw_floor);
+        render_floor(&mut canvas, &player, &world_map, &mut floor_texture, raw_textures);
         // render_ceiling(&mut canvas);
         // Perform raycasting
         render_walls(&mut canvas, &player, &world_map, &textures, &dark_textures);
@@ -145,7 +143,7 @@ pub fn main() {
 
     fn move_player(
         player: &mut Player,
-        world_map: &[[u32; 24]; 24],
+        world_map: &WorldMap,
         event_pump: &sdl2::EventPump,
         frame_time: f64,
     ) {
@@ -159,14 +157,14 @@ pub fn main() {
         if pressed_keys.contains(&Keycode::Up) {
             let new_pos = player.pos
                 + Vector3::new(player.dir.x * move_speed, player.dir.y * move_speed, 0.0);
-            if world_map[new_pos.x as usize][new_pos.y as usize] == 0 {
+            if world_map.get_wall_cell(new_pos.x as u32, new_pos.y as u32) == 0 {
                 player.pos = new_pos;
             }
         }
         if pressed_keys.contains(&Keycode::Down) {
             let new_pos = player.pos
                 - Vector3::new(player.dir.x * move_speed, player.dir.y * move_speed, 0.0);
-            if world_map[new_pos.x as usize][new_pos.y as usize] == 0 {
+            if world_map.get_wall_cell(new_pos.x as u32, new_pos.y as u32) == 0 {
                 player.pos = new_pos;
             }
         }
@@ -194,17 +192,17 @@ pub fn main() {
         }
     }
 
-    fn render_walls(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player, world_map: &[[u32; 24]; 24], textures: &Vec<Texture>, dark_textures: &Vec<Texture>) {
+    fn render_walls(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player, world_map: &WorldMap, textures: &Vec<Texture>, dark_textures: &Vec<Texture>) {
         for i in 0..SCREEN_WIDTH {
             // Calculate incoming ray position/direction
             let camera_x: f64 = 2.0 * i as f64 / SCREEN_WIDTH as f64 - 1.0;
             let ray_hit_pos = camera_x * player.camera_plane;
             let ray_dir = player.dir + ray_hit_pos;
             // Which box we're in
-            let mut curr_grid = MapGrid {
-                x: player.pos.x as i32,
-                y: player.pos.y as i32,
-            };
+            let mut curr_grid = Vector2::new(
+                player.pos.x as i32,
+                player.pos.y as i32,
+            );
             // Length of ray from any x/y side to next x/y side
             let delta_dist = Vector2::new((1.0 / ray_dir.x).abs(), (1.0 / ray_dir.y).abs());
             let step_x: i32;
@@ -238,7 +236,7 @@ pub fn main() {
                     curr_grid.y += step_y;
                     side = WallSide::Y;
                 }
-                if world_map[curr_grid.x as usize][curr_grid.y as usize] > 0 {
+                if world_map.get_wall_cell(curr_grid.x as u32, curr_grid.y as u32) > 0 {
                     break;
                 }
             }
@@ -263,7 +261,7 @@ pub fn main() {
                 draw_end = SCREEN_HEIGHT as i32 - 1;
             }
             // Texture calculations
-            let tex_num = world_map[curr_grid.x as usize][curr_grid.y as usize] - 1;
+            let tex_num = world_map.get_wall_cell(curr_grid.x as u32, curr_grid.y as u32) - 1;
 
             // Exact x/y coord where it hit
             let wall_x = match side {
@@ -302,7 +300,8 @@ pub fn main() {
         }
     }
 
-    fn render_floor(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player, floor_texture: &mut Texture, raw_floor: &[u8]) {
+    // Actually renders the floor AND ceiling
+    fn render_floor(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player, world_map: &WorldMap, floor_texture: &mut Texture, raw_textures: &Vec<Vec<u8>>) {
         let new_data = &mut vec![128; (SCREEN_WIDTH * SCREEN_HEIGHT * 4) as usize];
         let left_ray = player.dir - player.camera_plane;
         let right_ray = player.dir + player.camera_plane;
@@ -328,6 +327,8 @@ pub fn main() {
                     floor_pos.y as i32,
                 );
 
+                // let map_cell = world_map.get_wall_cell(floor_cell.x as u32, floor_cell.y as u32);
+
                 // Get fractional part of coordiate (how far in cell)
                 let tex_x = (TEX_WIDTH as f64 * (floor_pos.x - floor_cell.x as f64)) as u32 & (TEX_WIDTH - 1);
                 let tex_y = (TEX_HEIGHT as f64 * (floor_pos.y - floor_cell.y as f64)) as u32 & (TEX_HEIGHT - 1);
@@ -338,7 +339,7 @@ pub fn main() {
                 // One RGBA pixel = 4 bytes, so we copy 4 bytes from src texture to destination
                 // Trust me...
                 unsafe {
-                    let tex_start = &raw_floor[((TEX_WIDTH * tex_y + tex_x) * 4) as usize] as *const u8;
+                    let tex_start = &raw_textures[0][((TEX_WIDTH * tex_y + tex_x) * 4) as usize] as *const u8;
                     let floor_start = &mut new_data[((y * SCREEN_WIDTH + x) * 4) as usize] as *mut u8;
                     std::ptr::copy(tex_start, floor_start, 4);
                 }
