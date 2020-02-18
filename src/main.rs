@@ -9,17 +9,14 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
-use sdl2::rect::Point;
 use sdl2::render::Texture;
 use sdl2::video::WindowContext;
 use std::collections::HashSet;
 use std::collections::HashMap;
-use std::time::Duration;
 use std::str;
 
 use cgmath::Vector2;
 use cgmath::Vector3;
-use cgmath::Angle;
 
 const TEX_WIDTH: u32 = 64;
 const TEX_HEIGHT: u32 = 64;
@@ -68,7 +65,7 @@ pub fn main() {
         .unwrap();
 
     let mut canvas = window.into_canvas().build().unwrap();
-    canvas.set_logical_size(SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32);
+    canvas.set_logical_size(SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32).unwrap();
     // Load textures
     // Wall/Floor textures
     let texture_bits = crate::data::get_textures_from_file().unwrap();
@@ -109,7 +106,7 @@ pub fn main() {
         render_floor(&mut canvas, &player, &mut floor_texture, raw_floor);
         // render_ceiling(&mut canvas);
         // Perform raycasting
-        render_walls(&mut canvas, &player, &world_map, &textures, &dark_textures, &mut floor_texture);
+        render_walls(&mut canvas, &player, &world_map, &textures, &dark_textures);
         // Get frame time
         let time = sdl_context.timer().unwrap().ticks();
         let frame_time = (time - old_time) as f64 / 1000.0; // in seconds
@@ -140,7 +137,6 @@ pub fn main() {
 
     pub fn draw_fps(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, fps: f64, font_textures: &HashMap<char, Texture>) {
         render_string(&format!("fps: {0:.1}", fps), Rect::new(30, 30, 20, 35), canvas, font_textures);
-        let m = canvas.window_mut();
     }
 
     pub fn get_fps (frame_time: f64) -> f64 {
@@ -198,7 +194,7 @@ pub fn main() {
         }
     }
 
-    fn render_walls(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player, world_map: &[[u32; 24]; 24], textures: &Vec<Texture>, dark_textures: &Vec<Texture>, floor_texture: &mut Texture) {
+    fn render_walls(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player, world_map: &[[u32; 24]; 24], textures: &Vec<Texture>, dark_textures: &Vec<Texture>) {
         for i in 0..SCREEN_WIDTH {
             // Calculate incoming ray position/direction
             let camera_x: f64 = 2.0 * i as f64 / SCREEN_WIDTH as f64 - 1.0;
@@ -326,7 +322,7 @@ pub fn main() {
             );
 
             for x in 0..SCREEN_WIDTH {
-                // Take interger portion for cell #
+                // Take integer portion for cell #
                 let floor_cell = Vector2::new(
                     floor_pos.x as i32,
                     floor_pos.y as i32,
@@ -338,23 +334,22 @@ pub fn main() {
 
                 floor_pos = floor_pos + floor_step;
 
+                // Yeah I gotta copy 4 bytes at a time here so for efficiency's sake we gotta go unsafe for the memcpy :O
+                // One RGBA pixel = 4 bytes, so we copy 4 bytes from src texture to destination
+                // Trust me...
                 unsafe {
                     let tex_start = &raw_floor[((TEX_WIDTH * tex_y + tex_x) * 4) as usize] as *const u8;
                     let floor_start = &mut new_data[((y * SCREEN_WIDTH + x) * 4) as usize] as *mut u8;
                     std::ptr::copy(tex_start, floor_start, 4);
                 }
-                // let color = raw_floor[tex_start as usize];
-                // new_data[(y * SCREEN_WIDTH + x) as usize] = color;
             }
         }
-
-        // TODO get floor pixels, edit texture here
-        floor_texture.with_lock(None, |mut dat, pitch| {
+        // Faster than texture.update?
+        floor_texture.with_lock(None, |dat, _| {
             dat.copy_from_slice(new_data);
-        });
-        // floor_texture.update(None, &new_data, (SCREEN_WIDTH * 4) as usize).unwrap();
+        }).unwrap();
 
-        canvas.copy(floor_texture, Rect::new(0, SCREEN_HEIGHT / 2, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32 / 2), Rect::new(0, SCREEN_HEIGHT / 2, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32 / 2));
+        canvas.copy(floor_texture, Rect::new(0, SCREEN_HEIGHT / 2, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32 / 2), Rect::new(0, SCREEN_HEIGHT / 2, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32 / 2)).unwrap();
     }
 
     fn render_ceiling (canvas: &mut sdl2::render::Canvas<sdl2::video::Window>) {
@@ -390,7 +385,7 @@ pub fn main() {
             }
             let width = &font_textures.get(&c).unwrap().query().width;
             canvas.copy(&font_textures.get(&c).unwrap(), None, Rect::new(start_x, position.y, position.width(), position.height())).unwrap();
-            start_x += ((*width as i32) + 5);
+            start_x += *width as i32 + 5;
         }
     }
 }
