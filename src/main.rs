@@ -3,6 +3,7 @@
 extern crate cgmath;
 extern crate sdl2;
 mod data;
+mod sprites;
 
 use crate::data::WorldMap;
 
@@ -87,6 +88,10 @@ pub fn main() {
 
     // Font textures
     let font_textures = generate_font_textures(&creator);
+
+    // Load sprites
+    let mut sprite_manager = sprites::SpriteManager::new();
+    sprite_manager.init(&creator).unwrap();
 
     canvas.clear();
     let mut event_pump = sdl_context.event_pump().unwrap();
