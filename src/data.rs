@@ -8,11 +8,12 @@ use std::fs::File;
 use std::io::Read;
 use std::error::Error;
 
+// Note all textures are 1-indexed since 0 is special
 #[derive(Serialize, Debug)]
 pub struct MapCell {
-    pub wall_tex: u32,
-    pub floor_tex: u32,
-    pub ceil_tex: u32,
+    pub wall_tex: i32,
+    pub floor_tex: i32,
+    pub ceil_tex: i32,
 }
 
 // JSON definition of map. Gets transformed into WorldMap by combining the 3 grids into 1 cell vector
@@ -20,9 +21,9 @@ pub struct MapCell {
 struct WorldMapJSON {
     pub height: u32,
     pub width: u32,
-    wall_grid: Vec<Vec<u32>>,
-    floor_grid: Vec<Vec<u32>>,
-    ceil_grid: Vec<Vec<u32>>,
+    wall_grid: Vec<Vec<i32>>,
+    floor_grid: Vec<Vec<i32>>,
+    ceil_grid: Vec<Vec<i32>>,
 }
 
 #[derive(Serialize, Debug)]

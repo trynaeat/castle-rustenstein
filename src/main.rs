@@ -326,8 +326,8 @@ pub fn main() {
                     floor_pos.y as i32,
                 );
 
-                let f_cell = world_map.get_cell(floor_cell.x as u32 & (world_map.height - 1), floor_cell.y as u32 & (world_map.width - 1)).floor_tex;
-                let c_cell = world_map.get_cell(floor_cell.x as u32 & (world_map.height - 1), floor_cell.y as u32 & (world_map.width - 1)).ceil_tex;
+                let f_cell = world_map.get_cell(floor_cell.x as u32 & (world_map.height - 1), floor_cell.y as u32 & (world_map.width - 1)).floor_tex - 1;
+                let c_cell = world_map.get_cell(floor_cell.x as u32 & (world_map.height - 1), floor_cell.y as u32 & (world_map.width - 1)).ceil_tex - 1;
 
                 // Get fractional part of coordiate (how far in cell)
                 let tex_x = (TEX_WIDTH as f64 * (floor_pos.x - floor_cell.x as f64)) as u32 & (TEX_WIDTH - 1);
