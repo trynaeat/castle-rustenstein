@@ -8,13 +8,28 @@ use std::fs::File;
 use std::io::Read;
 use std::error::Error;
 
+#[derive(Serialize, Debug)]
+pub struct MapCell {
+    pub wall_tex: u32,
+    pub floor_tex: u32,
+    pub ceil_tex: u32,
+}
+
+// JSON definition of map. Gets transformed into WorldMap by combining the 3 grids into 1 cell vector
 #[derive(Serialize, Deserialize, Debug)]
-pub struct WorldMap {
+struct WorldMapJSON {
     pub height: u32,
     pub width: u32,
     wall_grid: Vec<Vec<u32>>,
     floor_grid: Vec<Vec<u32>>,
     ceil_grid: Vec<Vec<u32>>,
+}
+
+#[derive(Serialize, Debug)]
+pub struct WorldMap {
+    pub height: u32,
+    pub width: u32,
+    grid: Vec<MapCell>,
 }
 
 impl WorldMap {
@@ -24,31 +39,29 @@ impl WorldMap {
         let mut data = String::new();
         file.read_to_string(&mut data)?;
 
-        let map: WorldMap = serde_json::from_str(&data)?;
+        let map_json: WorldMapJSON = serde_json::from_str(&data)?;
+        let mut map = WorldMap{
+            height: map_json.height,
+            width: map_json.width,
+            grid: vec![],
+        };
+        for i in 0..map_json.width as usize {
+            for j in 0..map_json.height as usize {
+                map.grid.push(
+                    MapCell {
+                        wall_tex: map_json.wall_grid[i][j],
+                        floor_tex: map_json.floor_grid[i][j],
+                        ceil_tex: map_json.ceil_grid[i][j],
+                    },
+                );
+            }
+        }
 
         return Ok(map);
     }
 
-    // pub fn load_map(mapname: &str) -> Result<WorldMap, Box<dyn Error>> {
-    //     return Ok(WorldMap{
-    //         height: 24,
-    //         width: 24,
-    //         wall_grid: vec![],
-    //         floor_grid: vec![],
-    //         ceil_grid: vec![],
-    //     });
-    // }
-
-    pub fn get_wall_cell(&self, x: u32, y: u32) -> u32 {
-        return self.wall_grid[x as usize][y as usize];
-    }
-
-    pub fn get_floor_cell(&self, x: u32, y: u32) -> u32 {
-        return self.floor_grid[x as usize][y as usize];
-    }
-
-    pub fn get_ceil_cell(&self, x: u32, y: u32) -> u32 {
-        return self.ceil_grid[x as usize][y as usize];
+    pub fn get_cell(&self, x: u32, y: u32) -> &MapCell {
+        return &self.grid[(y * self.height + x) as usize];
     }
 }
 

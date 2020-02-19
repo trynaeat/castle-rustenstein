@@ -16,7 +16,6 @@ use sdl2::video::WindowContext;
 use std::collections::HashSet;
 use std::collections::HashMap;
 use std::str;
-use std::io::{self, Write};
 
 use cgmath::Vector2;
 use cgmath::Vector3;
@@ -46,7 +45,7 @@ pub fn main() {
     let world_map = WorldMap::load_map("test_map_small").unwrap();
     // Init Player and Camera
     let mut player = Player {
-        pos: Vector3::new(2.0, 3.5, 0.0),
+        pos: Vector3::new(6.5, 3.5, 0.0),
         dir: Vector2::new(-1.0, 0.0),
         camera_plane: Vector2::new(0.0, 0.66),
     };
@@ -157,14 +156,14 @@ pub fn main() {
         if pressed_keys.contains(&Keycode::Up) {
             let new_pos = player.pos
                 + Vector3::new(player.dir.x * move_speed, player.dir.y * move_speed, 0.0);
-            if world_map.get_wall_cell(new_pos.x as u32, new_pos.y as u32) == 0 {
+            if world_map.get_cell(new_pos.x as u32, new_pos.y as u32).wall_tex == 0 {
                 player.pos = new_pos;
             }
         }
         if pressed_keys.contains(&Keycode::Down) {
             let new_pos = player.pos
                 - Vector3::new(player.dir.x * move_speed, player.dir.y * move_speed, 0.0);
-            if world_map.get_wall_cell(new_pos.x as u32, new_pos.y as u32) == 0 {
+            if world_map.get_cell(new_pos.x as u32, new_pos.y as u32).wall_tex == 0 {
                 player.pos = new_pos;
             }
         }
@@ -236,7 +235,7 @@ pub fn main() {
                     curr_grid.y += step_y;
                     side = WallSide::Y;
                 }
-                if world_map.get_wall_cell(curr_grid.x as u32, curr_grid.y as u32) > 0 {
+                if world_map.get_cell(curr_grid.x as u32, curr_grid.y as u32).wall_tex > 0 {
                     break;
                 }
             }
@@ -261,7 +260,7 @@ pub fn main() {
                 draw_end = SCREEN_HEIGHT as i32 - 1;
             }
             // Texture calculations
-            let tex_num = world_map.get_wall_cell(curr_grid.x as u32, curr_grid.y as u32) - 1;
+            let tex_num = world_map.get_cell(curr_grid.x as u32, curr_grid.y as u32).wall_tex - 1;
 
             // Exact x/y coord where it hit
             let wall_x = match side {
@@ -327,8 +326,8 @@ pub fn main() {
                     floor_pos.y as i32,
                 );
 
-                let f_cell = world_map.get_floor_cell(floor_cell.x as u32 & (world_map.width - 1), floor_cell.y as u32 & (world_map.height - 1));
-                let c_cell = world_map.get_ceil_cell(floor_cell.x as u32 & (world_map.width - 1), floor_cell.y as u32 & (world_map.height - 1));
+                let f_cell = world_map.get_cell(floor_cell.x as u32 & (world_map.height - 1), floor_cell.y as u32 & (world_map.width - 1)).floor_tex;
+                let c_cell = world_map.get_cell(floor_cell.x as u32 & (world_map.height - 1), floor_cell.y as u32 & (world_map.width - 1)).ceil_tex;
 
                 // Get fractional part of coordiate (how far in cell)
                 let tex_x = (TEX_WIDTH as f64 * (floor_pos.x - floor_cell.x as f64)) as u32 & (TEX_WIDTH - 1);
