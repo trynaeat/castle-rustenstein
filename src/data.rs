@@ -46,8 +46,8 @@ impl WorldMap {
             width: map_json.width,
             grid: vec![],
         };
-        for i in 0..map_json.width as usize {
-            for j in 0..map_json.height as usize {
+        for i in 0..map_json.height as usize {
+            for j in (0..map_json.width as usize).rev() {
                 map.grid.push(
                     MapCell {
                         wall_tex: map_json.wall_grid[i][j],
@@ -62,7 +62,7 @@ impl WorldMap {
     }
 
     pub fn get_cell(&self, x: u32, y: u32) -> &MapCell {
-        return &self.grid[(y * self.height + x) as usize];
+        return &self.grid[(y * self.width + x) as usize];
     }
 }
 

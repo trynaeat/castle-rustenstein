@@ -94,6 +94,8 @@ pub fn main() {
     let mut old_time: u32 = 0;
     let mut frames = 0;
     let mut fps = 0.0;
+    // Buffer of wall distance for each x-stripe. Used later for sprite occlusion
+    let mut z_buffer = [0.0; SCREEN_WIDTH as usize];
     'running: loop {
         // Clear screen
         canvas.set_draw_color(Color::RGB(128, 128, 128));
@@ -103,7 +105,7 @@ pub fn main() {
         render_floor(&mut canvas, &player, &world_map, &mut floor_texture, raw_textures);
         // render_ceiling(&mut canvas);
         // Perform raycasting
-        render_walls(&mut canvas, &player, &world_map, &textures, &dark_textures);
+        render_walls(&mut canvas, &player, &world_map, &textures, &dark_textures, &mut z_buffer);
         // Get frame time
         let time = sdl_context.timer().unwrap().ticks();
         let frame_time = (time - old_time) as f64 / 1000.0; // in seconds
@@ -191,7 +193,7 @@ pub fn main() {
         }
     }
 
-    fn render_walls(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player, world_map: &WorldMap, textures: &Vec<Texture>, dark_textures: &Vec<Texture>) {
+    fn render_walls(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player, world_map: &WorldMap, textures: &Vec<Texture>, dark_textures: &Vec<Texture>, z_buffer: &mut [f64; SCREEN_WIDTH as usize]) {
         for i in 0..SCREEN_WIDTH {
             // Calculate incoming ray position/direction
             let camera_x: f64 = 2.0 * i as f64 / SCREEN_WIDTH as f64 - 1.0;
@@ -247,6 +249,8 @@ pub fn main() {
                     (curr_grid.y as f64 - player.pos.y + (1.0 - step_y as f64) / 2.0) / ray_dir.y
                 }
             };
+            // Save distance in z-buffer
+            z_buffer[i as usize] = perp_wall_dist;
             // Calculate height of line
             let line_height =
                 (WALL_HEIGHT_SCALE * SCREEN_HEIGHT as f64 / perp_wall_dist) as i32;
@@ -326,8 +330,8 @@ pub fn main() {
                     floor_pos.y as i32,
                 );
 
-                let f_cell = world_map.get_cell(floor_cell.x as u32 & (world_map.height - 1), floor_cell.y as u32 & (world_map.width - 1)).floor_tex - 1;
-                let c_cell = world_map.get_cell(floor_cell.x as u32 & (world_map.height - 1), floor_cell.y as u32 & (world_map.width - 1)).ceil_tex - 1;
+                let f_cell = world_map.get_cell(floor_cell.x as u32 & (world_map.width - 1), floor_cell.y as u32 & (world_map.height - 1)).floor_tex - 1;
+                let c_cell = world_map.get_cell(floor_cell.x as u32 & (world_map.width - 1), floor_cell.y as u32 & (world_map.height - 1)).ceil_tex - 1;
 
                 // Get fractional part of coordiate (how far in cell)
                 let tex_x = (TEX_WIDTH as f64 * (floor_pos.x - floor_cell.x as f64)) as u32 & (TEX_WIDTH - 1);
@@ -356,16 +360,6 @@ pub fn main() {
         }).unwrap();
 
         canvas.copy(floor_texture, None, None).unwrap();
-    }
-
-    fn render_ceiling (canvas: &mut sdl2::render::Canvas<sdl2::video::Window>) {
-        canvas.set_draw_color(Color::RGB(64, 64, 64));
-        canvas.fill_rect(Rect::new(
-            0,
-            0,
-            SCREEN_WIDTH as u32,
-            SCREEN_HEIGHT as u32 / 2,
-        )).unwrap();
     }
 
     fn generate_font_textures (texture_creator: &sdl2::render::TextureCreator<WindowContext>) -> HashMap<char, Texture> {
