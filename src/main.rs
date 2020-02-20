@@ -4,6 +4,7 @@ extern crate cgmath;
 extern crate sdl2;
 mod data;
 mod sprites;
+mod textures;
 
 use crate::data::WorldMap;
 
@@ -66,25 +67,9 @@ pub fn main() {
     canvas.set_logical_size(SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32).unwrap();
     // Load textures
     // Wall/Floor textures
-    let texture_bits = crate::data::get_textures_from_file().unwrap();
-    let raw_textures = &texture_bits;
     let creator = canvas.texture_creator();
-    let mut textures: Vec<Texture> = vec![];
-    let mut dark_textures: Vec<Texture> = vec![];
     let mut floor_texture = creator.create_texture_streaming(PixelFormatEnum::RGBA32, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32).unwrap();
-    for i in texture_bits.iter() {
-        let mut texture = creator.create_texture_static(PixelFormatEnum::RGBA32, TEX_WIDTH, TEX_HEIGHT).unwrap();
-        let mut dark_texture = creator.create_texture_static(PixelFormatEnum::RGBA32, TEX_WIDTH, TEX_HEIGHT).unwrap();
-        texture.update(None, &i, (TEX_WIDTH * 4) as usize).unwrap();
-        textures.push(texture);
-        // Divide color by 2 for dark texture
-        let mut dark_bits = vec![];
-        for byte in i {
-            dark_bits.push(byte / 2);
-        }
-        dark_texture.update(None, &dark_bits, (TEX_WIDTH * 4) as usize).unwrap();
-        dark_textures.push(dark_texture);
-    }
+    let texture_manager = textures::TextureManager::new().init(&creator).unwrap();
 
     // Font textures
     let font_textures = generate_font_textures(&creator);
