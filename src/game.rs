@@ -294,7 +294,15 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
             
             let inv_det = 1.0 / (self.player.camera_plane.x * self.player.dir.y - self.player.dir.x * self.player.camera_plane.y);
             let transform_x = inv_det * (self.player.dir.y * rel_pos.x - self.player.dir.x * rel_pos.y);
-            let transform_y = inv_det * ((-self.player.camera_plane.y) * rel_pos.x + self.player.camera_plane.x * rel_pos.y); // depth of sprite from camera
+            let mut transform_y = inv_det * ((-self.player.camera_plane.y) * rel_pos.x + self.player.camera_plane.x * rel_pos.y); // depth of sprite from camera
+            // Clamp transform_y if ~= 0 to prevent overflows
+            if transform_y.abs() < 0.0001 {
+                if transform_y < 0.0 {
+                    transform_y = -0.0001;
+                } else {
+                    transform_y = 0.0001;
+                }
+            }
 
             let mov_screen = (sprite.sprite.v_move as f64 / transform_y) as i32; // User defined sprite offset
             let sprite_screen_x = ((SCREEN_WIDTH / 2) as f64 * (1.0 + transform_x / transform_y)) as i32;
