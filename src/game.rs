@@ -70,10 +70,16 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
             sprite: s_manager.get_sprite("03_pillar").unwrap(),
             pos: Vector3::new(2.5, 13.5, 0.0),
         }, Entity {
+            sprite: s_manager.get_sprite("03_pillar").unwrap(),
+            pos: Vector3::new(5.5, 10.5, 0.0),
+        }, Entity {
+            sprite: s_manager.get_sprite("03_pillar").unwrap(),
+            pos: Vector3::new(2.5, 10.5, 0.0),
+        }, Entity {
             sprite: s_manager.get_sprite("02_greenlight").unwrap(),
             pos: Vector3::new(3.5, 3.5, 0.0),
         }, Entity {
-            sprite: s_manager.get_sprite("04_soldier").unwrap(),
+            sprite: s_manager.get_sprite("05_cacodemon").unwrap(),
             pos: Vector3::new(3.5, 3.5, 0.0),
         }];
         Game {
