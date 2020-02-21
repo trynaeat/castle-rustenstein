@@ -62,10 +62,19 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
         };
         let test_entities: Vec<Entity> = vec![Entity {
             sprite: s_manager.get_sprite("01_barrel").unwrap(),
-            pos: Vector3::new(5.0, 3.5, 0.0),
+            pos: Vector3::new(5.5, 3.5, 0.0),
         }, Entity {
-            sprite: s_manager.get_sprite("01_barrel").unwrap(),
-            pos: Vector3::new(5.0, 14.0, 0.0),
+            sprite: s_manager.get_sprite("03_pillar").unwrap(),
+            pos: Vector3::new(5.5, 13.5, 0.0),
+        }, Entity {
+            sprite: s_manager.get_sprite("03_pillar").unwrap(),
+            pos: Vector3::new(2.5, 13.5, 0.0),
+        }, Entity {
+            sprite: s_manager.get_sprite("02_greenlight").unwrap(),
+            pos: Vector3::new(3.5, 3.5, 0.0),
+        }, Entity {
+            sprite: s_manager.get_sprite("04_soldier").unwrap(),
+            pos: Vector3::new(3.5, 3.5, 0.0),
         }];
         Game {
             player: player,
@@ -281,14 +290,15 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
             let transform_x = inv_det * (self.player.dir.y * rel_pos.x - self.player.dir.x * rel_pos.y);
             let transform_y = inv_det * ((-self.player.camera_plane.y) * rel_pos.x + self.player.camera_plane.x * rel_pos.y); // depth of sprite from camera
 
+            let mov_screen = (sprite.sprite.v_move as f64 / transform_y) as i32; // User defined sprite offset
             let sprite_screen_x = ((SCREEN_WIDTH / 2) as f64 * (1.0 + transform_x / transform_y)) as i32;
 
             // height of sprite on screen
-            let sprite_height = ((SCREEN_HEIGHT as f64 / transform_y) as i32).abs();
-            let sprite_width = sprite_height;
+            let sprite_height = (((SCREEN_HEIGHT as f64 / transform_y) * sprite.sprite.v_scale) as i32).abs();
+            let sprite_width = ((SCREEN_HEIGHT as f64 / transform_y) * sprite.sprite.u_scale) as i32;
             // clamp draw start into screen with max/min
-            let draw_start = Vector2::new(((-sprite_width) / 2 + sprite_screen_x).max(0), ((-sprite_height) / 2 + SCREEN_HEIGHT / 2).max(0));
-            let draw_end = Vector2::new((sprite_width / 2 + sprite_screen_x).min(SCREEN_WIDTH - 1), (sprite_height / 2 + SCREEN_HEIGHT / 2).min(SCREEN_HEIGHT - 1));
+            let draw_start = Vector2::new(((-sprite_width) / 2 + sprite_screen_x).max(0), ((-sprite_height) / 2 + SCREEN_HEIGHT / 2 + mov_screen).max(0));
+            let draw_end = Vector2::new((sprite_width / 2 + sprite_screen_x).min(SCREEN_WIDTH - 1), (sprite_height / 2 + SCREEN_HEIGHT / 2 + mov_screen).min(SCREEN_HEIGHT - 1));
             // Draw every vertical stripe of sprite
             for x in draw_start.x..draw_end.x {
                 let tex_x = ((x - (-sprite_width / 2 + sprite_screen_x)) * TEX_WIDTH as i32 / sprite_width) as i32;
@@ -299,8 +309,8 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
                 if transform_y > 0.0 && x > 0 && x < SCREEN_WIDTH && transform_y < self.z_buffer[x as usize] {
                     canvas.copy(
                         self.sprite_manager.get_texture(&sprite.sprite.tex_id).unwrap(),
-                        Rect::new(tex_x, 0, 1, TEX_HEIGHT),
-                        Rect::new(x, SCREEN_HEIGHT - draw_end.y, 1, sprite_height as u32)
+                        Rect::new(tex_x, 0 as i32, 1, TEX_HEIGHT),
+                        Rect::new(x, SCREEN_HEIGHT - (draw_end.y + mov_screen), 1, sprite_height as u32)
                     ).unwrap();
                 }
             }

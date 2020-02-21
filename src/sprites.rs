@@ -23,6 +23,10 @@ const SPRITE_HEIGHT: u32 = 64;
 pub struct Sprite {
     pub name: String,
     pub tex_id: String,
+    pub u_scale: f64, // horizontal scale
+    pub v_scale: f64, // vertical scale
+    pub u_move: i32, // horizontal move
+    pub v_move: i32, // vertical move
 }
 
 #[derive(Debug)]
