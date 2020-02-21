@@ -13,6 +13,8 @@ use std::collections::HashSet;
 
 use crate::data::WorldMap;
 use crate::textures::TextureManager;
+use crate::sprites::Entity;
+use crate::sprites::SpriteManager;
 
 const SCREEN_HEIGHT: i32 = 600;
 const SCREEN_WIDTH: i32 = 800;
@@ -34,34 +36,52 @@ enum WallSide {
     Y,
 }
 
-pub struct Game<'a, 'b> {
+#[derive(Debug)]
+struct SpriteSortable<'a> {
+    entity: &'a Entity<'a>,
+    distance: f64,
+}
+
+pub struct Game<'a, 'b, 'c> {
     player: Player,
     world_map: WorldMap,
     texture_manager: &'a TextureManager<'a>,
+    sprite_manager: &'c SpriteManager<'c>,
     floor_texture: &'b mut Texture<'a>,
     z_buffer: [f64; SCREEN_WIDTH as usize],
+    entities: Vec<Entity<'c>>,
 }
 
-impl<'a, 'b> Game<'a, 'b> {
-    pub fn new(map: WorldMap, manager: &'a TextureManager, floor_tex: &'b mut Texture<'a>) -> Game<'a, 'b> {
+impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
+    pub fn new(map: WorldMap, manager: &'a TextureManager, s_manager: &'c SpriteManager, floor_tex: &'b mut Texture<'a>) -> Game<'a, 'b, 'c> {
         // Init Player and Camera
         let player = Player {
             pos: Vector3::new(6.5, 3.5, 0.0),
             dir: Vector2::new(-1.0, 0.0),
             camera_plane: Vector2::new(0.0, 0.66),
         };
+        let test_entities: Vec<Entity> = vec![Entity {
+            sprite: s_manager.get_sprite("01_barrel").unwrap(),
+            pos: Vector3::new(5.0, 3.5, 0.0),
+        }, Entity {
+            sprite: s_manager.get_sprite("01_barrel").unwrap(),
+            pos: Vector3::new(5.0, 14.0, 0.0),
+        }];
         Game {
             player: player,
             world_map: map,
             texture_manager: manager,
+            sprite_manager: s_manager,
             floor_texture: floor_tex,
             z_buffer: [0.0; SCREEN_WIDTH as usize],
+            entities: test_entities,
         }
     }
 
     pub fn draw(&mut self, canvas: &mut Canvas<sdl2::video::Window>) {
         self.render_floor(canvas);
         self.render_walls(canvas);
+        self.render_sprites(canvas);
     }
 
     // Actually renders the floor AND ceiling
@@ -232,6 +252,58 @@ impl<'a, 'b> Game<'a, 'b> {
                 Rect::new(tex_x as i32, tex_strip_start, 1, tex_strip_height as u32),
                 Rect::new(i as i32, SCREEN_HEIGHT - draw_end, 1, (draw_end - draw_start) as u32),
             ).unwrap();
+        }
+    }
+
+    // Render all current "Entities" as 2d sprites
+    fn render_sprites(&mut self, canvas: &mut Canvas<sdl2::video::Window>) {
+        // Get all entities' sprites and sort them
+        let mut sprite_buffer = vec![];
+        for ent in self.entities.iter() {
+            sprite_buffer.push(SpriteSortable {
+                entity: ent,
+                distance: (self.player.pos.x - ent.pos.x).powf(2.0) + (self.player.pos.y - ent.pos.y).powf(2.0), // Take distance without square root (doesn't matter)
+            });
+        }
+        sprite_buffer.sort_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap());
+        sprite_buffer.reverse(); // Farthest to nearest
+
+        // draw all sprites
+        for s in sprite_buffer {
+            let sprite = s.entity;
+            let rel_pos = sprite.pos - self.player.pos;
+            //transform sprite with the inverse camera matrix
+             // [ planeX   dirX ] -1                                       [ dirY      -dirX ]
+            // [               ]       =  1/(planeX*dirY-dirX*planeY) *   [                 ]
+             // [ planeY   dirY ]                                          [ -planeY  planeX ]
+            
+            let inv_det = 1.0 / (self.player.camera_plane.x * self.player.dir.y - self.player.dir.x * self.player.camera_plane.y);
+            let transform_x = inv_det * (self.player.dir.y * rel_pos.x - self.player.dir.x * rel_pos.y);
+            let transform_y = inv_det * ((-self.player.camera_plane.y) * rel_pos.x + self.player.camera_plane.x * rel_pos.y); // depth of sprite from camera
+
+            let sprite_screen_x = ((SCREEN_WIDTH / 2) as f64 * (1.0 + transform_x / transform_y)) as i32;
+
+            // height of sprite on screen
+            let sprite_height = ((SCREEN_HEIGHT as f64 / transform_y) as i32).abs();
+            let sprite_width = sprite_height;
+            // clamp draw start into screen with max/min
+            let draw_start = Vector2::new(((-sprite_width) / 2 + sprite_screen_x).max(0), ((-sprite_height) / 2 + SCREEN_HEIGHT / 2).max(0));
+            let draw_end = Vector2::new((sprite_width / 2 + sprite_screen_x).min(SCREEN_WIDTH - 1), (sprite_height / 2 + SCREEN_HEIGHT / 2).min(SCREEN_HEIGHT - 1));
+            // Draw every vertical stripe of sprite
+            for x in draw_start.x..draw_end.x {
+                let tex_x = ((x - (-sprite_width / 2 + sprite_screen_x)) * TEX_WIDTH as i32 / sprite_width) as i32;
+                //1) it's in front of camera plane
+                //2) it's on the screen (left)
+                //3) it's on the screen (right)
+                //4) ZBuffer, with perpendicular distance
+                if transform_y > 0.0 && x > 0 && x < SCREEN_WIDTH && transform_y < self.z_buffer[x as usize] {
+                    canvas.copy(
+                        self.sprite_manager.get_texture(&sprite.sprite.tex_id).unwrap(),
+                        Rect::new(tex_x, 0, 1, TEX_HEIGHT),
+                        Rect::new(x, SCREEN_HEIGHT - draw_end.y, 1, sprite_height as u32)
+                    ).unwrap();
+                }
+            }
         }
     }
 

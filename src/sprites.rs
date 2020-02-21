@@ -6,6 +6,7 @@ use std::io::Read;
 use std::collections::HashMap;
 use std::error::Error;
 
+use sdl2::render::BlendMode;
 use sdl2::render::Texture;
 use sdl2::render::TextureCreator;
 use sdl2::pixels::PixelFormatEnum;
@@ -13,7 +14,7 @@ use sdl2::pixels::PixelFormatEnum;
 use glob::glob;
 use serde::{Serialize, Deserialize};
 
-use cgmath::Vector2;
+use cgmath::Vector3;
 
 const SPRITE_WIDTH: u32 = 64;
 const SPRITE_HEIGHT: u32 = 64;
@@ -24,9 +25,10 @@ pub struct Sprite {
     pub tex_id: String,
 }
 
-pub struct Entity {
-    sprite: Sprite,
-    pos: Vector2<u32>,
+#[derive(Debug)]
+pub struct Entity<'a> {
+    pub sprite: &'a Sprite,
+    pub pos: Vector3<f64>,
 }
 
 pub struct SpriteManager<'a> {
@@ -61,6 +63,7 @@ impl<'a> SpriteManager<'a> {
                 let img_raw = img.to_rgba().into_vec();
                 let mut texture = creator.create_texture_static(PixelFormatEnum::RGBA32, SPRITE_WIDTH, SPRITE_HEIGHT).unwrap();
                 texture.update(None, &img_raw, (SPRITE_WIDTH * 4) as usize)?;
+                texture.set_blend_mode(BlendMode::Blend);
                 tex_map.insert(sprite.tex_id.clone(), texture);
 
                 map.insert(sprite.name.clone(), sprite);
@@ -73,5 +76,9 @@ impl<'a> SpriteManager<'a> {
 
     pub fn get_texture(&self, id: &str) -> Option<&Texture> {
         self.sprite_textures.get(id)
+    }
+
+    pub fn get_sprite(&self, id: &str) -> Option<&Sprite> {
+        self.sprites.get(id)
     }
 }

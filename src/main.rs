@@ -47,15 +47,15 @@ pub fn main() {
     texture_manager.init(&creator).unwrap();
     let mut floor_texture = creator.create_texture_streaming(PixelFormatEnum::RGBA32, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32).unwrap();
 
-    // Init game
-    let mut game = Game::new(world_map, &texture_manager, &mut floor_texture);
-
-    // Font textures
-    let font_textures = generate_font_textures(&creator);
-
     // Load sprites
     let mut sprite_manager = sprites::SpriteManager::new();
     sprite_manager.init(&creator).unwrap();
+
+    // Init game
+    let mut game = Game::new(world_map, &texture_manager, &sprite_manager, &mut floor_texture);
+
+    // Font textures
+    let font_textures = generate_font_textures(&creator);
 
     canvas.clear();
     let mut event_pump = sdl_context.event_pump().unwrap();
