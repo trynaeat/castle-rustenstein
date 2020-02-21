@@ -1,6 +1,8 @@
 extern crate image;
 extern crate glob;
 
+use image::GenericImageView;
+
 use std::fs::File;
 use std::io::Read;
 use std::collections::HashMap;
@@ -16,13 +18,14 @@ use serde::{Serialize, Deserialize};
 
 use cgmath::Vector3;
 
-const SPRITE_WIDTH: u32 = 64;
-const SPRITE_HEIGHT: u32 = 64;
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Sprite {
     pub name: String,
     pub tex_id: String,
+    #[serde(default)]
+    pub width: u32,
+    #[serde(default)]
+    pub height: u32,
     pub u_scale: f64, // horizontal scale
     pub v_scale: f64, // vertical scale
     pub u_move: i32, // horizontal move
@@ -58,15 +61,18 @@ impl<'a> SpriteManager<'a> {
                 let mut file = File::open(meta)?;
                 let mut data = String::new();
                 file.read_to_string(&mut data)?;
-                let sprite: Sprite = serde_json::from_str(&data)?;
+                let mut sprite: Sprite = serde_json::from_str(&data)?;
 
                 // Init sprite_textures map
                 let sprite_name = &sprite.name;
                 let path = format!("./data/textures/sprites/{}.png", sprite_name);
                 let img = image::open(path)?;
+                let dim = img.dimensions(); // (width, height)
+                sprite.width = dim.0;
+                sprite.height = dim.1;
                 let img_raw = img.to_rgba().into_vec();
-                let mut texture = creator.create_texture_static(PixelFormatEnum::RGBA32, SPRITE_WIDTH, SPRITE_HEIGHT).unwrap();
-                texture.update(None, &img_raw, (SPRITE_WIDTH * 4) as usize)?;
+                let mut texture = creator.create_texture_static(PixelFormatEnum::RGBA32, sprite.width, sprite.height).unwrap();
+                texture.update(None, &img_raw, (sprite.width * 4) as usize)?;
                 texture.set_blend_mode(BlendMode::Blend);
                 tex_map.insert(sprite.tex_id.clone(), texture);
 

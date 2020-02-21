@@ -301,7 +301,7 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
             let draw_end = Vector2::new((sprite_width / 2 + sprite_screen_x).min(SCREEN_WIDTH - 1), (sprite_height / 2 + SCREEN_HEIGHT / 2 + mov_screen).min(SCREEN_HEIGHT - 1));
             // Draw every vertical stripe of sprite
             for x in draw_start.x..draw_end.x {
-                let tex_x = ((x - (-sprite_width / 2 + sprite_screen_x)) * TEX_WIDTH as i32 / sprite_width) as i32;
+                let tex_x = ((x - (-sprite_width / 2 + sprite_screen_x)) * sprite.sprite.width as i32 / sprite_width) as i32;
                 //1) it's in front of camera plane
                 //2) it's on the screen (left)
                 //3) it's on the screen (right)
@@ -309,7 +309,7 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
                 if transform_y > 0.0 && x > 0 && x < SCREEN_WIDTH && transform_y < self.z_buffer[x as usize] {
                     canvas.copy(
                         self.sprite_manager.get_texture(&sprite.sprite.tex_id).unwrap(),
-                        Rect::new(tex_x, 0 as i32, 1, TEX_HEIGHT),
+                        Rect::new(tex_x, 0 as i32, 1, sprite.sprite.height),
                         Rect::new(x, SCREEN_HEIGHT - (draw_end.y + mov_screen), 1, sprite_height as u32)
                     ).unwrap();
                 }
