@@ -16,6 +16,13 @@ pub struct MapCell {
     pub ceil_tex: i32,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct EntityJSON {
+    pub sprite: String,
+    pub x: f64,
+    pub y: f64,
+}
+
 // JSON definition of map. Gets transformed into WorldMap by combining the 3 grids into 1 cell vector
 #[derive(Serialize, Deserialize, Debug)]
 struct WorldMapJSON {
@@ -24,13 +31,15 @@ struct WorldMapJSON {
     wall_grid: Vec<Vec<i32>>,
     floor_grid: Vec<Vec<i32>>,
     ceil_grid: Vec<Vec<i32>>,
+    pub entities: Vec<EntityJSON>,
 }
 
 #[derive(Serialize, Debug)]
-pub struct WorldMap {
+pub struct WorldMap  {
     pub height: u32,
     pub width: u32,
     grid: Vec<MapCell>,
+    pub entities: Vec<EntityJSON>,
 }
 
 impl WorldMap {
@@ -45,6 +54,7 @@ impl WorldMap {
             height: map_json.height,
             width: map_json.width,
             grid: vec![],
+            entities: map_json.entities,
         };
         for i in 0..map_json.height as usize {
             for j in (0..map_json.width as usize).rev() {

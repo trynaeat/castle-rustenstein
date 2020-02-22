@@ -60,28 +60,14 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
             dir: Vector2::new(-1.0, 0.0),
             camera_plane: Vector2::new(0.0, 0.66),
         };
-        let test_entities: Vec<Entity> = vec![Entity {
-            sprite: s_manager.get_sprite("01_barrel").unwrap(),
-            pos: Vector3::new(5.5, 3.5, 0.0),
-        }, Entity {
-            sprite: s_manager.get_sprite("03_pillar").unwrap(),
-            pos: Vector3::new(5.5, 13.5, 0.0),
-        }, Entity {
-            sprite: s_manager.get_sprite("03_pillar").unwrap(),
-            pos: Vector3::new(2.5, 13.5, 0.0),
-        }, Entity {
-            sprite: s_manager.get_sprite("03_pillar").unwrap(),
-            pos: Vector3::new(5.5, 10.5, 0.0),
-        }, Entity {
-            sprite: s_manager.get_sprite("03_pillar").unwrap(),
-            pos: Vector3::new(2.5, 10.5, 0.0),
-        }, Entity {
-            sprite: s_manager.get_sprite("02_greenlight").unwrap(),
-            pos: Vector3::new(3.5, 3.5, 0.0),
-        }, Entity {
-            sprite: s_manager.get_sprite("05_cacodemon").unwrap(),
-            pos: Vector3::new(3.5, 3.5, 0.0),
-        }];
+        // Initialize starting entities based on JSON definition on the map
+        let init_entities = map.entities.iter().map(|e| {
+            let sprite = s_manager.get_sprite(&e.sprite).unwrap();
+            Entity {
+                sprite: sprite,
+                pos: Vector3::new(e.x, e.y, 0.0),
+            }
+        }).collect();
         Game {
             player: player,
             world_map: map,
@@ -89,7 +75,7 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
             sprite_manager: s_manager,
             floor_texture: floor_tex,
             z_buffer: [0.0; SCREEN_WIDTH as usize],
-            entities: test_entities,
+            entities: init_entities,
         }
     }
 
@@ -140,14 +126,18 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
                 // One RGBA pixel = 4 bytes, so we copy 4 bytes from src texture to destination
                 // Trust me...
                 unsafe {
-                    // Floor
-                    let tex_start = &self.texture_manager.get_raw_tex(f_cell as u32)[((TEX_WIDTH * tex_y + tex_x) * 4) as usize] as *const u8;
-                    let floor_start = &mut new_data[((y * SCREEN_WIDTH + x) * 4) as usize] as *mut u8;
-                    std::ptr::copy(tex_start, floor_start, 4);
-                    // Ceiling
-                    let tex_start = &self.texture_manager.get_raw_tex(c_cell as u32)[((TEX_WIDTH * tex_y + tex_x) * 4) as usize] as *const u8;
-                    let ceil_start = &mut new_data[(((SCREEN_HEIGHT - y) * SCREEN_WIDTH + x) * 4) as usize] as *mut u8;
-                    std::ptr::copy(tex_start, ceil_start, 4);
+                    if f_cell > -1 {
+                        // Floor
+                        let tex_start = &self.texture_manager.get_raw_tex(f_cell as u32)[((TEX_WIDTH * tex_y + tex_x) * 4) as usize] as *const u8;
+                        let floor_start = &mut new_data[((y * SCREEN_WIDTH + x) * 4) as usize] as *mut u8;
+                        std::ptr::copy(tex_start, floor_start, 4);
+                    }
+                    if c_cell > -1 {
+                        // Ceiling
+                        let tex_start = &self.texture_manager.get_raw_tex(c_cell as u32)[((TEX_WIDTH * tex_y + tex_x) * 4) as usize] as *const u8;
+                        let ceil_start = &mut new_data[(((SCREEN_HEIGHT - y) * SCREEN_WIDTH + x) * 4) as usize] as *mut u8;
+                        std::ptr::copy(tex_start, ceil_start, 4);
+                    }
                 }
             }
         }

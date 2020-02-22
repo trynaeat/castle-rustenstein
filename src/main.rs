@@ -17,15 +17,23 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
 use sdl2::render::Texture;
 use sdl2::video::WindowContext;
+
 use std::collections::HashMap;
 use std::str;
+use std::env;
 
 const SCREEN_WIDTH: i32 = 800;
 const SCREEN_HEIGHT: i32 = 600;
 
 pub fn main() {
+    // Get map name
+    let args: Vec<String> = env::args().collect();
+    let mut map_name = "test_map_small";
+    if args.len() > 1 {
+        map_name = &args[1];
+    }
     // Init map
-    let world_map = WorldMap::load_map("test_map_small").unwrap();
+    let world_map = WorldMap::load_map(map_name).unwrap();
 
     // SDL setup and loop
     let sdl_context = sdl2::init().unwrap();
