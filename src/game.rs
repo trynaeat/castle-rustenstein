@@ -3,6 +3,7 @@ extern crate cgmath;
 
 use cgmath::Vector2;
 use cgmath::Vector3;
+use cgmath::InnerSpace;
 
 use sdl2::render::Canvas;
 use sdl2::render::Texture;
@@ -23,10 +24,13 @@ const TEX_HEIGHT: u32 = 64;
 const WALL_HEIGHT_SCALE: f64 = 1.0;
 const MOVE_SPEED: f64 = 4.0;
 const ROT_SPEED: f64 = 2.0;
+const ACCELERATION: f64 = 0.3;
+const DRAG: f64 = 3.0;
 
 struct Player {
     pos: Vector3<f64>,
     dir: Vector2<f64>,
+    velocity: Vector3<f64>,
     camera_plane: Vector2<f64>,
 }
 
@@ -58,6 +62,7 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
         let player = Player {
             pos: Vector3::new(6.5, 3.5, 0.0),
             dir: Vector2::new(-1.0, 0.0),
+            velocity: Vector3::new(0.0, 0.0, 0.0),
             camera_plane: Vector2::new(0.0, 0.66),
         };
         // Initialize starting entities based on JSON definition on the map
@@ -326,7 +331,6 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
         event_pump: &sdl2::EventPump,
         frame_time: f64,
     ) {
-        let move_speed = frame_time * MOVE_SPEED;
         let rot_speed = frame_time * ROT_SPEED;
         let pressed_keys: HashSet<Keycode> = event_pump
             .keyboard_state()
@@ -334,17 +338,19 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
             .filter_map(Keycode::from_scancode)
             .collect();
         if pressed_keys.contains(&Keycode::Up) {
-            let new_pos = self.player.pos
-                + Vector3::new(self.player.dir.x * move_speed, self.player.dir.y * move_speed, 0.0);
-            if self.world_map.get_cell(new_pos.x as u32, new_pos.y as u32).wall_tex == 0 {
-                self.player.pos = new_pos;
+            let dir_normal = self.player.dir.normalize();
+            let dir = Vector3::new(dir_normal.x, dir_normal.y, 0.0);
+            let new_velocity = self.player.velocity + ACCELERATION * frame_time * dir;
+            if new_velocity.magnitude() < MOVE_SPEED * frame_time {
+                self.player.velocity = new_velocity;
             }
         }
         if pressed_keys.contains(&Keycode::Down) {
-            let new_pos = self.player.pos
-                - Vector3::new(self.player.dir.x * move_speed, self.player.dir.y * move_speed, 0.0);
-            if self.world_map.get_cell(new_pos.x as u32, new_pos.y as u32).wall_tex == 0 {
-                self.player.pos = new_pos;
+            let dir_normal = self.player.dir.normalize();
+            let dir = Vector3::new(dir_normal.x, dir_normal.y, 0.0);
+            let new_velocity = self.player.velocity - ACCELERATION * frame_time * dir;
+            if new_velocity.magnitude() < MOVE_SPEED * frame_time {
+                self.player.velocity = new_velocity;
             }
         }
         if pressed_keys.contains(&Keycode::Left) {
@@ -368,6 +374,17 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
                 self.player.camera_plane.x * (-rot_speed).sin()
                     + self.player.camera_plane.y * (-rot_speed).cos(),
             );
+        }
+
+        // Apply drag
+        self.player.velocity -= self.player.velocity * DRAG * frame_time;
+        let new_pos = self.player.pos + self.player.velocity;
+        // Do collision detection
+        // Move player based on current velocity
+        if self.world_map.get_cell(new_pos.x as u32, new_pos.y as u32).wall_tex == 0 {
+            self.player.pos = new_pos;
+        } else {
+            self.player.velocity = Vector3::new(0.0, 0.0, 0.0);
         }
     }
 }
