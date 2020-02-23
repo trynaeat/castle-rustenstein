@@ -414,22 +414,25 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
                 }
             }
         }
-        // Draw a line from current -> direction * hitbox radius
-        let collision_point = self.player.pos + self.player.velocity.normalize() * PLAYER_RADIUS;
         // Do wall collision detection
-        // Move player based on current velocity
-        if self.world_map.get_cell(collision_point.x as u32, collision_point.y as u32).wall_tex == 0 {
-            // noop
-        } else {
-            // Compare current/new cells, update velocity according to which way we hit the wall
-            let new_x = collision_point.x as u32;
-            let curr_x = self.player.pos.x as u32;
-            // We hit a wall from the x direction
-            if curr_x != new_x {
-                self.player.velocity = Vector3::new(0.0, self.player.velocity.y, 0.0);
+        if self.player.velocity.magnitude() > 0.0 {
+            // Draw a line from current -> direction * hitbox radius
+            let collision_point = self.player.pos + self.player.velocity.normalize() * PLAYER_RADIUS;
+            // Do wall collision detection
+            // Move player based on current velocity
+            if self.world_map.get_cell(collision_point.x as u32, collision_point.y as u32).wall_tex == 0 {
+                // noop
             } else {
-                // we hit it from the y direction
-                self.player.velocity = Vector3::new(self.player.velocity.x, 0.0, 0.0);
+                // Compare current/new cells, update velocity according to which way we hit the wall
+                let new_x = collision_point.x as u32;
+                let curr_x = self.player.pos.x as u32;
+                // We hit a wall from the x direction
+                if curr_x != new_x {
+                    self.player.velocity = Vector3::new(0.0, self.player.velocity.y, 0.0);
+                } else {
+                    // we hit it from the y direction
+                    self.player.velocity = Vector3::new(self.player.velocity.x, 0.0, 0.0);
+                }
             }
         }
 
