@@ -24,8 +24,9 @@ const TEX_HEIGHT: u32 = 64;
 const WALL_HEIGHT_SCALE: f64 = 1.0;
 const MOVE_SPEED: f64 = 4.0;
 const ROT_SPEED: f64 = 2.0;
-const ACCELERATION: f64 = 0.3;
+const ACCELERATION: f64 = 0.1;
 const DRAG: f64 = 3.0;
+const PLAYER_RADIUS: f64 = 0.2;
 
 struct Player {
     pos: Vector3<f64>,
@@ -203,7 +204,7 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
                     break;
                 }
             }
-            let perp_wall_dist = match side {
+            let mut perp_wall_dist = match side {
                 WallSide::X => {
                     (curr_grid.x as f64 - self.player.pos.x + (1.0 - step_x as f64) / 2.0) / ray_dir.x
                 }
@@ -211,6 +212,8 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
                     (curr_grid.y as f64 - self.player.pos.y + (1.0 - step_y as f64) / 2.0) / ray_dir.y
                 }
             };
+            // Clamp minimum distance to avoid overflow
+            perp_wall_dist = perp_wall_dist.max(0.001);
             // Save distance in z-buffer
             self.z_buffer[i as usize] = perp_wall_dist;
             // Calculate height of line
@@ -379,12 +382,23 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
         // Apply drag
         self.player.velocity -= self.player.velocity * DRAG * frame_time;
         let new_pos = self.player.pos + self.player.velocity;
+        // Draw a line from current -> direction * hitbox radius
+        let collision_point = new_pos + self.player.velocity.normalize() * PLAYER_RADIUS;
         // Do collision detection
         // Move player based on current velocity
-        if self.world_map.get_cell(new_pos.x as u32, new_pos.y as u32).wall_tex == 0 {
+        if self.world_map.get_cell(collision_point.x as u32, collision_point.y as u32).wall_tex == 0 {
             self.player.pos = new_pos;
         } else {
-            self.player.velocity = Vector3::new(0.0, 0.0, 0.0);
+            // Compare current/new cells, update velocity according to which way we hit the wall
+            let new_x = collision_point.x as u32;
+            let curr_x = self.player.pos.x as u32;
+            // We hit a wall from the x direction
+            if curr_x != new_x {
+                self.player.velocity = Vector3::new(0.0, self.player.velocity.y, 0.0);
+            } else {
+                // we hit it from the y direction
+                self.player.velocity = Vector3::new(self.player.velocity.x, 0.0, 0.0);
+            }
         }
     }
 }
