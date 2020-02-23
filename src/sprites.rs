@@ -36,6 +36,8 @@ pub struct Sprite {
 pub struct Entity<'a> {
     pub sprite: &'a Sprite,
     pub pos: Vector3<f64>,
+    pub collidable: bool,
+    pub collision_radius: f64,
 }
 
 pub struct SpriteManager<'a> {

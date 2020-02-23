@@ -72,6 +72,8 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
             Entity {
                 sprite: sprite,
                 pos: Vector3::new(e.x, e.y, 0.0),
+                collidable: e.collidable,
+                collision_radius: e.collision_radius,
             }
         }).collect();
         Game {
@@ -381,13 +383,21 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
 
         // Apply drag
         self.player.velocity -= self.player.velocity * DRAG * frame_time;
-        let new_pos = self.player.pos + self.player.velocity;
+        // Do sprite collision detection
+        for e in self.entities.iter() {
+            if e.collidable {
+                let diff = e.pos - self.player.pos;
+                if diff.magnitude() < e.collision_radius {
+                    self.player.velocity = -1.0 * self.player.velocity;
+                }
+            }
+        }
         // Draw a line from current -> direction * hitbox radius
-        let collision_point = new_pos + self.player.velocity.normalize() * PLAYER_RADIUS;
-        // Do collision detection
+        let collision_point = self.player.pos + self.player.velocity.normalize() * PLAYER_RADIUS;
+        // Do wall collision detection
         // Move player based on current velocity
         if self.world_map.get_cell(collision_point.x as u32, collision_point.y as u32).wall_tex == 0 {
-            self.player.pos = new_pos;
+            // noop
         } else {
             // Compare current/new cells, update velocity according to which way we hit the wall
             let new_x = collision_point.x as u32;
@@ -400,5 +410,8 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
                 self.player.velocity = Vector3::new(self.player.velocity.x, 0.0, 0.0);
             }
         }
+
+        let new_pos = self.player.pos + self.player.velocity;
+        self.player.pos = new_pos;
     }
 }

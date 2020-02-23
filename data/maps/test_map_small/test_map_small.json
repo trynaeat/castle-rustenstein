@@ -66,19 +66,27 @@
         }, {
             "sprite": "03_pillar",
             "x": 5.5,
-            "y": 13.5
+            "y": 13.5,
+            "collidable": true,
+            "collision_radius": 0.5
         }, {
             "sprite": "03_pillar",
             "x": 2.5,
-            "y": 13.5
+            "y": 13.5,
+            "collidable": true,
+            "collision_radius": 0.5
         }, {
             "sprite": "03_pillar",
             "x": 5.5,
-            "y": 10.5
+            "y": 10.5,
+            "collidable": true,
+            "collision_radius": 0.5
         }, {
             "sprite": "03_pillar",
             "x": 2.5,
-            "y": 10.5
+            "y": 10.5,
+            "collidable": true,
+            "collision_radius": 0.5
         }, {
             "sprite": "02_greenlight",
             "x": 3.5,
