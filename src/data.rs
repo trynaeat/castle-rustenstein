@@ -25,6 +25,10 @@ pub struct EntityJSON {
     pub collidable: bool,
     #[serde(default)]
     pub collision_radius: f64,
+    #[serde(default)]
+    pub dir_x: f64,
+    #[serde(default)]
+    pub dir_y: f64,
 }
 
 // JSON definition of map. Gets transformed into WorldMap by combining the 3 grids into 1 cell vector

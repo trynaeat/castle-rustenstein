@@ -4,5 +4,6 @@
     "u_scale": 0.66,
     "v_scale": 0.75,
     "u_move": 0,
-    "v_move": -35
+    "v_move": -35,
+    "rotating": true
 }

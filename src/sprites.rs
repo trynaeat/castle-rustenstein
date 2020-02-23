@@ -17,6 +17,7 @@ use glob::glob;
 use serde::{Serialize, Deserialize};
 
 use cgmath::Vector3;
+use cgmath::Vector2;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Sprite {
@@ -30,12 +31,15 @@ pub struct Sprite {
     pub v_scale: f64, // vertical scale
     pub u_move: i32, // horizontal move
     pub v_move: i32, // vertical move
+    #[serde(default)]
+    pub rotating: bool,
 }
 
 #[derive(Debug)]
 pub struct Entity<'a> {
     pub sprite: &'a Sprite,
     pub pos: Vector3<f64>,
+    pub dir: Vector2<f64>,
     pub collidable: bool,
     pub collision_radius: f64,
 }
@@ -92,5 +96,15 @@ impl<'a> SpriteManager<'a> {
 
     pub fn get_sprite(&self, id: &str) -> Option<&Sprite> {
         self.sprites.get(id)
+    }
+
+    // Get correct rotated sprite from a sheet based on angle
+    // Assumes 8 equally spaced sprites per row on the sheet.
+    pub fn get_sprite_x_offset (width: u32, height: u32, angle: f64) -> i32 {
+        let step = 2.0 * std::f64::consts::PI / 8.0;
+        let step_num = ((angle + std::f64::consts::PI) / step) as i32;
+        let img_step = width as i32 / 8;
+
+        img_step * step_num
     }
 }

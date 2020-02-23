@@ -60,9 +60,11 @@
     ],
     "entities": [
         {
-            "sprite": "01_barrel",
+            "sprite": "04_soldier",
             "x": 5.5,
-            "y": 3.5
+            "y": 3.5,
+            "dir_x": 0.0,
+            "dir_y": 1.0
         }, {
             "sprite": "03_pillar",
             "x": 5.5,
