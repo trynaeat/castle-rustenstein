@@ -322,7 +322,7 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
                     let diff_ray = sprite.pos - self.player.pos;
                     let dir_angle = sprite.dir.y.atan2(sprite.dir.x);
                     // let diff_ray = Vector2::new(diff_ray.x, diff_ray.y) + sprite.dir;
-                    let mut angle = diff_ray.y.atan2(diff_ray.x) + dir_angle;
+                    let mut angle = diff_ray.y.atan2(diff_ray.x) - dir_angle;
                     if angle > std::f64::consts::PI {
                         angle -= 2.0 * std::f64::consts::PI;
                     }
