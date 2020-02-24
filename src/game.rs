@@ -16,6 +16,7 @@ use crate::data::WorldMap;
 use crate::textures::TextureManager;
 use crate::sprites::Entity;
 use crate::sprites::SpriteManager;
+use crate::animation::AnimationManager;
 
 const SCREEN_HEIGHT: i32 = 600;
 const SCREEN_WIDTH: i32 = 800;
@@ -52,13 +53,14 @@ pub struct Game<'a, 'b, 'c> {
     world_map: WorldMap,
     texture_manager: &'a TextureManager<'a>,
     sprite_manager: &'c SpriteManager<'c>,
+    animation_manager: &'c AnimationManager,
     floor_texture: &'b mut Texture<'a>,
     z_buffer: [f64; SCREEN_WIDTH as usize],
     entities: Vec<Entity<'c>>,
 }
 
 impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
-    pub fn new(map: WorldMap, manager: &'a TextureManager, s_manager: &'c SpriteManager, floor_tex: &'b mut Texture<'a>) -> Game<'a, 'b, 'c> {
+    pub fn new(map: WorldMap, manager: &'a TextureManager, s_manager: &'c SpriteManager, a_manager: &'c AnimationManager, floor_tex: &'b mut Texture<'a>) -> Game<'a, 'b, 'c> {
         // Init Player and Camera
         let player = Player {
             pos: Vector3::new(6.5, 3.5, 0.0),
@@ -69,12 +71,17 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
         // Initialize starting entities based on JSON definition on the map
         let init_entities = map.entities.iter().map(|e| {
             let sprite = s_manager.get_sprite(&e.sprite).unwrap();
+            let animation = match e.animation.as_str() {
+                "" => None,
+                _ => a_manager.get_animation(&e.animation),
+            };
             Entity {
                 sprite: sprite,
                 pos: Vector3::new(e.x, e.y, 0.0),
                 dir: Vector2::new(e.dir_x, e.dir_y),
                 collidable: e.collidable,
                 collision_radius: e.collision_radius,
+                animation: animation,
             }
         }).collect();
         Game {
@@ -82,6 +89,7 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
             world_map: map,
             texture_manager: manager,
             sprite_manager: s_manager,
+            animation_manager: a_manager,
             floor_texture: floor_tex,
             z_buffer: [0.0; SCREEN_WIDTH as usize],
             entities: init_entities,
@@ -330,7 +338,7 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
                         angle += 2.0 * std::f64::consts::PI;
                     }
                     tex_x = ((x - (-sprite_width / 2 + sprite_screen_x)) * (sprite.sprite.width / 8) as i32 / sprite_width) as i32
-                    + SpriteManager::get_sprite_x_offset(sprite.sprite.width, sprite.sprite.height, angle);
+                    + sprite.sprite.get_x_offset(angle);
                 } else {
                     tex_x = ((x - (-sprite_width / 2 + sprite_screen_x)) * sprite.sprite.width as i32 / sprite_width) as i32;
                 }

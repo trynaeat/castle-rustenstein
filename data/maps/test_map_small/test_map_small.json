@@ -64,7 +64,8 @@
             "x": 5.5,
             "y": 3.5,
             "dir_x": 0.0,
-            "dir_y": 1.0
+            "dir_y": 1.0,
+            "animation": "walking"
         }, {
             "sprite": "03_pillar",
             "x": 5.5,

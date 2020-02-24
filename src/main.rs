@@ -6,6 +6,7 @@ mod data;
 mod sprites;
 mod textures;
 mod game;
+mod animation;
 
 use crate::game::Game;
 use crate::data::WorldMap;
@@ -59,8 +60,12 @@ pub fn main() {
     let mut sprite_manager = sprites::SpriteManager::new();
     sprite_manager.init(&creator).unwrap();
 
+    // Load animations
+    let mut animation_manager = animation::AnimationManager::new();
+    animation_manager.init().unwrap();
+
     // Init game
-    let mut game = Game::new(world_map, &texture_manager, &sprite_manager, &mut floor_texture);
+    let mut game = Game::new(world_map, &texture_manager, &sprite_manager, &animation_manager, &mut floor_texture);
 
     // Font textures
     let font_textures = generate_font_textures(&creator);

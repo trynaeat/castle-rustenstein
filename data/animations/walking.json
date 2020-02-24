@@ -1,0 +1,26 @@
+{
+    "name": "walking",
+    "do_loop": true,
+    "frames": [
+        {
+            "x_pos": 0,
+            "y_pos": 1,
+            "duration": 0.2
+        },
+        {
+            "x_pos": 0,
+            "y_pos": 2,
+            "duration": 0.2
+        },
+        {
+            "x_pos": 0,
+            "y_pos": 3,
+            "duration": 0.2
+        },
+        {
+            "x_pos": 0,
+            "y_pos": 4,
+            "duration": 0.2
+        }
+    ]
+}

@@ -1,6 +1,8 @@
 extern crate image;
 extern crate glob;
 
+use crate::animation::Animation;
+
 use image::GenericImageView;
 
 use std::fs::File;
@@ -42,6 +44,7 @@ pub struct Entity<'a> {
     pub dir: Vector2<f64>,
     pub collidable: bool,
     pub collision_radius: f64,
+    pub animation: Option<Animation>,
 }
 
 pub struct SpriteManager<'a> {
@@ -97,13 +100,15 @@ impl<'a> SpriteManager<'a> {
     pub fn get_sprite(&self, id: &str) -> Option<&Sprite> {
         self.sprites.get(id)
     }
+}
 
-    // Get correct rotated sprite from a sheet based on angle
+impl Sprite {
+    // Get starting point for correct rotated sprite from a sheet based on angle
     // Assumes 8 equally spaced sprites per row on the sheet.
-    pub fn get_sprite_x_offset (width: u32, height: u32, angle: f64) -> i32 {
+    pub fn get_x_offset (&self, angle: f64) -> i32 {
         let step = 2.0 * std::f64::consts::PI / 8.0;
         let step_num = ((angle + std::f64::consts::PI) / step) as i32;
-        let img_step = width as i32 / 8;
+        let img_step = self.width as i32 / 8;
 
         img_step * step_num
     }
