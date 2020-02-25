@@ -96,10 +96,11 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
         }
     }
 
-    pub fn draw(&mut self, canvas: &mut Canvas<sdl2::video::Window>) {
+    pub fn draw(&mut self, canvas: &mut Canvas<sdl2::video::Window>, frame_time: f64) {
         self.render_floor(canvas);
         self.render_walls(canvas);
-        self.render_sprites(canvas);
+        self.render_sprites(canvas, frame_time);
+        self.tick_animations(frame_time);
     }
 
     // Actually renders the floor AND ceiling
@@ -280,7 +281,7 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
     }
 
     // Render all current "Entities" as 2d sprites
-    fn render_sprites(&mut self, canvas: &mut Canvas<sdl2::video::Window>) {
+    fn render_sprites(&mut self, canvas: &mut Canvas<sdl2::video::Window>, frame_time: f64) {
         // Get all entities' sprites and sort them
         let mut sprite_buffer = vec![];
         for ent in self.entities.iter() {
@@ -353,6 +354,12 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
                     ).unwrap();
                 }
             }
+        }
+    }
+
+    pub fn tick_animations (&mut self, frame_time: f64) {
+        for e in self.entities.iter_mut() {
+            e.tick_animation(frame_time);
         }
     }
 

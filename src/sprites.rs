@@ -114,10 +114,9 @@ impl<'a> Entity<'a> {
         let mut width = self.sprite.width; // Width of sprite
         let mut height = self.sprite.height; // Height of sprite
         let mut x = 0; // Starting x pos of sprite (top left)
-        let mut y = 0; // Starting y pos of sprite (top left)
         if self.sprite.rotating {
             width = width / 8;
-            height = height / 7;
+            height = height / 7 + 1;
             let step = 2.0 * std::f64::consts::PI / 8.0;
             let step_num = ((angle + std::f64::consts::PI) / step) as i32;
             let img_step = self.sprite.width as i32 / 8;
@@ -125,9 +124,41 @@ impl<'a> Entity<'a> {
             x = img_step * step_num;
         }
 
+        let y = match &self.animation {
+            None => 0,
+            Some(a) => height * a.get_current_frame_immut().y_pos,
+        } as i32;
+
         x = x + ((x_slice - (-sprite_screen_width / 2 + sprite_screen_x)) * width as i32 / sprite_screen_width) as i32;
 
         // Returns a vertical strip at the right location
         return Rect::new(x, y, 1, height);
+    }
+
+    // Move animation by 1 frame (if there IS an active animation)
+    // 1. decrement time in current frame
+    // 2. if time is up, go to next frame
+    // 3. if there is no next frame, either loop or remove the animation entirely
+    // frame_time: time that the last frame took in seconds
+    pub fn tick_animation (&mut self, frame_time: f64) {
+        match &mut self.animation {
+            None => return,
+            Some(a) => {
+                let curr_frame = a.get_current_frame();
+                curr_frame.time_remaining -= frame_time;
+                if curr_frame.time_remaining <= 0.0 {
+                    // Reset duration on frame in case we're looping
+                    curr_frame.time_remaining = curr_frame.duration;
+                    a.curr_frame += 1;
+                    if a.curr_frame >= a.get_num_frames() {
+                        if a.do_loop {
+                            a.curr_frame = 0;
+                        } else {
+                            self.animation = None;
+                        }
+                    }
+                }
+            }
+        };
     }
 }

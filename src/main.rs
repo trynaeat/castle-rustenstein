@@ -81,12 +81,12 @@ pub fn main() {
         // Clear screen
         canvas.set_draw_color(Color::RGB(128, 128, 128));
         canvas.clear();
-        // Render Game frame
-        game.draw(&mut canvas);
         // Get frame time
         let time = sdl_context.timer().unwrap().ticks();
         let frame_time = (time - old_time) as f64 / 1000.0; // in seconds
         old_time = time;
+        // Render Game frame
+        game.draw(&mut canvas, frame_time);
         // Draw FPS counter
         if frames % 30 == 0 {
             fps = get_fps(frame_time);
