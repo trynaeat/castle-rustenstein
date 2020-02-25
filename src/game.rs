@@ -82,6 +82,7 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
                 collidable: e.collidable,
                 collision_radius: e.collision_radius,
                 animation: animation,
+                dead: false,
             }
         }).collect();
         Game {
@@ -411,6 +412,18 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
                 self.player.camera_plane.x * (-rot_speed).sin()
                     + self.player.camera_plane.y * (-rot_speed).cos(),
             );
+        }
+
+        // TODO: remove, just demo'ing animations
+        if pressed_keys.contains(&Keycode::K) {
+            for e in self.entities.iter_mut() {
+                e.kill(self.animation_manager);
+            }
+        }
+        if pressed_keys.contains(&Keycode::R) {
+            for e in self.entities.iter_mut() {
+                e.revive();
+            }
         }
 
         // Apply drag

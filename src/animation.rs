@@ -14,6 +14,7 @@ use std::convert::From;
 pub struct Animation {
     pub name: String,
     pub do_loop: bool,
+    pub perm: bool, // If true, animation stops on last frame and stays there (usually death)
     pub curr_frame: usize,
     frames: Vec<AnimationFrame>,
 }
@@ -30,6 +31,8 @@ pub struct AnimationFrame {
 pub struct AnimationJSON {
     name: String,
     do_loop: bool,
+    #[serde(default)]
+    perm: bool,
     frames: Vec<AnimationFrameJSON>,
 }
 
@@ -95,6 +98,7 @@ impl From<AnimationJSON> for Animation {
         Animation {
             name: json.name,
             do_loop: json.do_loop,
+            perm: json.perm,
             curr_frame: 0,
             frames: json.frames.iter().map(|f| { AnimationFrame::from(f.clone()) }).collect(),
         }

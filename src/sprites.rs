@@ -2,6 +2,7 @@ extern crate image;
 extern crate glob;
 
 use crate::animation::Animation;
+use crate::animation::AnimationManager;
 
 use image::GenericImageView;
 
@@ -46,6 +47,7 @@ pub struct Entity<'a> {
     pub collidable: bool,
     pub collision_radius: f64,
     pub animation: Option<Animation>,
+    pub dead: bool,
 }
 
 pub struct SpriteManager<'a> {
@@ -117,17 +119,24 @@ impl<'a> Entity<'a> {
         if self.sprite.rotating {
             width = width / 8;
             height = height / 7 + 1;
-            let step = 2.0 * std::f64::consts::PI / 8.0;
-            let step_num = ((angle + std::f64::consts::PI) / step) as i32;
-            let img_step = self.sprite.width as i32 / 8;
+            if !self.dead {
+                let step = 2.0 * std::f64::consts::PI / 8.0;
+                let step_num = ((angle + std::f64::consts::PI) / step) as i32;
+                let img_step = self.sprite.width as i32 / 8;
 
-            x = img_step * step_num;
+                x = img_step * step_num;
+            }
         }
 
         let y = match &self.animation {
             None => 0,
             Some(a) => height * a.get_current_frame_immut().y_pos,
         } as i32;
+
+        x = match &self.animation {
+            None => x,
+            Some(a) => x + (width * a.get_current_frame_immut().x_pos) as i32,
+        };
 
         x = x + ((x_slice - (-sprite_screen_width / 2 + sprite_screen_x)) * width as i32 / sprite_screen_width) as i32;
 
@@ -153,12 +162,26 @@ impl<'a> Entity<'a> {
                     if a.curr_frame >= a.get_num_frames() {
                         if a.do_loop {
                             a.curr_frame = 0;
-                        } else {
+                        } else if !a.perm {
                             self.animation = None;
+                        } else {
+                            // Stay on last frame
+                            a.curr_frame = a.get_num_frames() - 1;
                         }
                     }
                 }
             }
         };
+    }
+
+    pub fn kill (&mut self, manager: &AnimationManager) {
+        self.dead = true;
+        self.collidable = false;
+        self.animation = manager.get_animation("die");
+    }
+
+    pub fn revive (&mut self) {
+        self.dead = false;
+        self.animation = None;
     }
 }
