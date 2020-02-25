@@ -21,6 +21,8 @@ pub struct AnimationFrame {
     x_pos: u32, // X position of frame in sprite sheet
     y_pos: u32, // Y position of frame in sprite sheet
     duration: f64, // Duration in seconds
+    #[serde(default)]
+    time_remaining: f64, // Current time remaining in frame
 }
 
 pub struct AnimationManager {

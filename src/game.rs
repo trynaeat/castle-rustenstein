@@ -324,36 +324,31 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
             let draw_end = Vector2::new((sprite_width / 2 + sprite_screen_x).min(SCREEN_WIDTH - 1), (sprite_height / 2 + SCREEN_HEIGHT / 2 + mov_screen).min(SCREEN_HEIGHT - 1));
             // Draw every vertical stripe of sprite
             for x in draw_start.x..draw_end.x {
-                let tex_x: i32;
+                let mut angle = 0.0;
+                // Only calculate this if the sprite is actually a rotating one
                 if sprite.sprite.rotating {
                     // Get angle between entity's direction and player direction
                     let diff_ray = sprite.pos - self.player.pos;
+                    // angle of Sprite's looking direction vs. origin
                     let dir_angle = sprite.dir.y.atan2(sprite.dir.x);
-                    // let diff_ray = Vector2::new(diff_ray.x, diff_ray.y) + sprite.dir;
-                    let mut angle = diff_ray.y.atan2(diff_ray.x) - dir_angle;
+                    angle = diff_ray.y.atan2(diff_ray.x) - dir_angle;
                     if angle > std::f64::consts::PI {
                         angle -= 2.0 * std::f64::consts::PI;
                     }
                     if angle <= -std::f64::consts::PI {
                         angle += 2.0 * std::f64::consts::PI;
                     }
-                    tex_x = ((x - (-sprite_width / 2 + sprite_screen_x)) * (sprite.sprite.width / 8) as i32 / sprite_width) as i32
-                    + sprite.sprite.get_x_offset(angle);
-                } else {
-                    tex_x = ((x - (-sprite_width / 2 + sprite_screen_x)) * sprite.sprite.width as i32 / sprite_width) as i32;
                 }
+                // Get vertical slice on sprite sheet
+                let sprite_rect = sprite.get_frame_rect(x, sprite_screen_x, sprite_width, angle);
                 //1) it's in front of camera plane
                 //2) it's on the screen (left)
                 //3) it's on the screen (right)
                 //4) ZBuffer, with perpendicular distance
                 if transform_y > 0.0 && x > 0 && x < SCREEN_WIDTH && transform_y < self.z_buffer[x as usize] {
-                    let height = match sprite.sprite.rotating {
-                        false => sprite.sprite.height,
-                        true => sprite.sprite.height / 7,
-                    };
                     canvas.copy(
                         self.sprite_manager.get_texture(&sprite.sprite.tex_id).unwrap(),
-                        Rect::new(tex_x, 0 as i32, 1, height),
+                        sprite_rect,
                         Rect::new(x, SCREEN_HEIGHT - (draw_end.y + mov_screen), 1, sprite_height as u32)
                     ).unwrap();
                 }

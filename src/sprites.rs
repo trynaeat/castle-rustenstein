@@ -14,6 +14,7 @@ use sdl2::render::BlendMode;
 use sdl2::render::Texture;
 use sdl2::render::TextureCreator;
 use sdl2::pixels::PixelFormatEnum;
+use sdl2::rect::Rect;
 
 use glob::glob;
 use serde::{Serialize, Deserialize};
@@ -102,14 +103,31 @@ impl<'a> SpriteManager<'a> {
     }
 }
 
-impl Sprite {
-    // Get starting point for correct rotated sprite from a sheet based on angle
-    // Assumes 8 equally spaced sprites per row on the sheet.
-    pub fn get_x_offset (&self, angle: f64) -> i32 {
-        let step = 2.0 * std::f64::consts::PI / 8.0;
-        let step_num = ((angle + std::f64::consts::PI) / step) as i32;
-        let img_step = self.width as i32 / 8;
+impl<'a> Entity<'a> {
+    // Get the correct rectangle to render from the sprite sheet
+    // Based on current angle to player and animation frame (if applicable)
+    // x_slice: desired slice of sprite on screen
+    // sprite_screen_x: sprite's starting point on screen
+    // sprite_screen_width: width of sprite on screen (used to calc starting x coord on sprite sheet)
+    // angle: angle between sprite's dir and player
+    pub fn get_frame_rect (&self, x_slice: i32, sprite_screen_x: i32, sprite_screen_width: i32, angle: f64) -> Rect {
+        let mut width = self.sprite.width; // Width of sprite
+        let mut height = self.sprite.height; // Height of sprite
+        let mut x = 0; // Starting x pos of sprite (top left)
+        let mut y = 0; // Starting y pos of sprite (top left)
+        if self.sprite.rotating {
+            width = width / 8;
+            height = height / 7;
+            let step = 2.0 * std::f64::consts::PI / 8.0;
+            let step_num = ((angle + std::f64::consts::PI) / step) as i32;
+            let img_step = self.sprite.width as i32 / 8;
 
-        img_step * step_num
+            x = img_step * step_num;
+        }
+
+        x = x + ((x_slice - (-sprite_screen_width / 2 + sprite_screen_x)) * width as i32 / sprite_screen_width) as i32;
+
+        // Returns a vertical strip at the right location
+        return Rect::new(x, y, 1, height);
     }
 }
