@@ -60,42 +60,34 @@
     ],
     "entities": [
         {
-            "sprite": "04_soldier",
+            "name": "soldier",
             "x": 5.5,
             "y": 3.5,
             "dir_x": 0.0,
             "dir_y": 1.0,
             "animation": "walking"
         }, {
-            "sprite": "03_pillar",
+            "name": "pillar",
             "x": 5.5,
-            "y": 13.5,
-            "collidable": true,
-            "collision_radius": 0.5
+            "y": 13.5
         }, {
-            "sprite": "03_pillar",
+            "name": "pillar",
             "x": 2.5,
-            "y": 13.5,
-            "collidable": true,
-            "collision_radius": 0.5
+            "y": 13.5
         }, {
-            "sprite": "03_pillar",
+            "name": "pillar",
             "x": 5.5,
-            "y": 10.5,
-            "collidable": true,
-            "collision_radius": 0.5
+            "y": 10.5
         }, {
-            "sprite": "03_pillar",
+            "name": "pillar",
             "x": 2.5,
-            "y": 10.5,
-            "collidable": true,
-            "collision_radius": 0.5
+            "y": 10.5
         }, {
-            "sprite": "02_greenlight",
+            "name": "greenlight",
             "x": 3.5,
             "y": 3.5
         }, {
-            "sprite": "05_cacodemon",
+            "name": "cacodemon",
             "x": 3.5,
             "y": 3.5
         }

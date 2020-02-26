@@ -108,17 +108,17 @@
     ],
     "entities": [
         {
-            "sprite": "01_barrel",
+            "name": "barrel",
             "x": 5.5,
             "y": 5.5
         },
         {
-            "sprite": "01_barrel",
+            "name": "barrel",
             "x": 5.5,
             "y": 7.5
         },
         {
-            "sprite": "04_soldier",
+            "name": "soldier",
             "x": 15.0,
             "y": 10.0,
             "dir_x": 0.0,

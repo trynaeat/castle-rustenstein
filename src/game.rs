@@ -16,6 +16,8 @@ use crate::data::WorldMap;
 use crate::textures::TextureManager;
 use crate::sprites::Entity;
 use crate::sprites::SpriteManager;
+use crate::sprites::EntityManager;
+use crate::data::EntityJSON;
 use crate::animation::AnimationManager;
 
 const SCREEN_HEIGHT: i32 = 600;
@@ -44,23 +46,24 @@ enum WallSide {
 
 #[derive(Debug)]
 struct SpriteSortable<'a> {
-    entity: &'a Entity<'a>,
+    entity: &'a Entity,
     distance: f64,
 }
 
 pub struct Game<'a, 'b, 'c> {
     player: Player,
     world_map: WorldMap,
+    entities: Vec<Entity>,
     texture_manager: &'a TextureManager<'a>,
     sprite_manager: &'c SpriteManager<'c>,
+    entity_manager: &'c mut EntityManager<'c>, // Mutable because it increments itself each time it spawns
     animation_manager: &'c AnimationManager,
     floor_texture: &'b mut Texture<'a>,
     z_buffer: [f64; SCREEN_WIDTH as usize],
-    entities: Vec<Entity<'c>>,
 }
 
 impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
-    pub fn new(map: WorldMap, manager: &'a TextureManager, s_manager: &'c SpriteManager, a_manager: &'c AnimationManager, floor_tex: &'b mut Texture<'a>) -> Game<'a, 'b, 'c> {
+    pub fn new(map: WorldMap, manager: &'a TextureManager, s_manager: &'c SpriteManager, e_manager: &'c mut EntityManager<'c>, a_manager: &'c AnimationManager, floor_tex: &'b mut Texture<'a>) -> Game<'a, 'b, 'c> {
         // Init Player and Camera
         let player = Player {
             pos: Vector3::new(6.5, 3.5, 0.0),
@@ -68,39 +71,28 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
             velocity: Vector3::new(0.0, 0.0, 0.0),
             camera_plane: Vector2::new(0.0, 0.66),
         };
-        // Initialize starting entities based on JSON definition on the map
-        let init_entities = map.entities.iter().map(|e| {
-            let sprite = s_manager.get_sprite(&e.sprite).unwrap();
-            let animation = match e.animation.as_str() {
-                "" => None,
-                _ => a_manager.get_animation(&e.animation),
-            };
-            Entity {
-                sprite: sprite,
-                pos: Vector3::new(e.x, e.y, 0.0),
-                dir: Vector2::new(e.dir_x, e.dir_y),
-                collidable: e.collidable,
-                collision_radius: e.collision_radius,
-                animation: animation,
-                dead: false,
-            }
-        }).collect();
-        Game {
+        let mut g = Game {
             player: player,
             world_map: map,
+            entities: vec![],
             texture_manager: manager,
             sprite_manager: s_manager,
+            entity_manager: e_manager,
             animation_manager: a_manager,
             floor_texture: floor_tex,
             z_buffer: [0.0; SCREEN_WIDTH as usize],
-            entities: init_entities,
-        }
+        };
+
+        // Spawn all entities defined on the map
+        g.init_entities(&g.world_map.entities.clone());
+
+        return g;
     }
 
     pub fn draw(&mut self, canvas: &mut Canvas<sdl2::video::Window>, frame_time: f64) {
         self.render_floor(canvas);
         self.render_walls(canvas);
-        self.render_sprites(canvas, frame_time);
+        self.render_sprites(canvas);
         self.tick_animations(frame_time);
     }
 
@@ -282,7 +274,7 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
     }
 
     // Render all current "Entities" as 2d sprites
-    fn render_sprites(&mut self, canvas: &mut Canvas<sdl2::video::Window>, frame_time: f64) {
+    fn render_sprites(&mut self, canvas: &mut Canvas<sdl2::video::Window>) {
         // Get all entities' sprites and sort them
         let mut sprite_buffer = vec![];
         for ent in self.entities.iter() {
@@ -461,5 +453,24 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
 
         let new_pos = self.player.pos + self.player.velocity;
         self.player.pos = new_pos;
+    }
+
+    pub fn spawn_entity(&mut self, e: &EntityJSON) {
+        let mut ent = self.entity_manager.create_entity(&e.name).unwrap();
+        let animation = match e.animation.as_str() {
+            "" => None,
+            _ => self.animation_manager.get_animation(&e.animation),
+        };
+        ent.animation = animation;
+        ent.pos = Vector3::new(e.x, e.y, 0.0);
+        ent.dir = Vector2::new(e.dir_x, e.dir_y);
+
+        self.entities.push(ent);
+    }
+
+    pub fn init_entities(&mut self, ents: &Vec<EntityJSON>) {
+        for e in ents {
+            self.spawn_entity(&e);
+        }
     }
 }

@@ -16,15 +16,11 @@ pub struct MapCell {
     pub ceil_tex: i32,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EntityJSON {
-    pub sprite: String,
+    pub name: String, // Name of entity template
     pub x: f64,
     pub y: f64,
-    #[serde(default)]
-    pub collidable: bool,
-    #[serde(default)]
-    pub collision_radius: f64,
     #[serde(default)]
     pub dir_x: f64,
     #[serde(default)]

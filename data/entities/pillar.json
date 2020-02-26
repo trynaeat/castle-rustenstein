@@ -1,0 +1,6 @@
+{   
+    "name": "pillar",
+    "sprite_name": "03_pillar",
+    "collidable": true,
+    "collision_radius": 0.5
+}

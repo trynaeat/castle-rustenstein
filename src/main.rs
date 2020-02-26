@@ -60,12 +60,16 @@ pub fn main() {
     let mut sprite_manager = sprites::SpriteManager::new();
     sprite_manager.init(&creator).unwrap();
 
+    // Load entities (objects, enemies etc)
+    let mut entity_manager = sprites::EntityManager::new(&sprite_manager);
+    entity_manager.init().unwrap();
+
     // Load animations
     let mut animation_manager = animation::AnimationManager::new();
     animation_manager.init().unwrap();
 
     // Init game
-    let mut game = Game::new(world_map, &texture_manager, &sprite_manager, &animation_manager, &mut floor_texture);
+    let mut game = Game::new(world_map, &texture_manager, &sprite_manager, &mut entity_manager, &animation_manager, &mut floor_texture);
 
     // Font textures
     let font_textures = generate_font_textures(&creator);

@@ -39,15 +39,78 @@ pub struct Sprite {
     pub rotating: bool,
 }
 
-#[derive(Debug)]
-pub struct Entity<'a> {
-    pub sprite: &'a Sprite,
+#[derive(Clone, Debug)]
+pub struct Entity {
+    pub id: u32,
+    pub name: String,
+    pub sprite: Sprite,
     pub pos: Vector3<f64>,
     pub dir: Vector2<f64>,
     pub collidable: bool,
     pub collision_radius: f64,
     pub animation: Option<Animation>,
     pub dead: bool,
+}
+
+// Template for instantiating entities
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct EntityTmpl {
+    pub name: String,
+    pub sprite_name: String,
+    #[serde(default)]
+    pub collidable: bool,
+    #[serde(default)]
+    pub collision_radius: f64,
+}
+
+pub struct EntityManager<'a> {
+    entity_tmpls: HashMap<String, EntityTmpl>,
+    sprite_manager: &'a SpriteManager<'a>,
+    id_counter: u32,
+}
+
+impl<'a> EntityManager<'_> {
+    pub fn new(manager: &'a SpriteManager) -> EntityManager<'a> {
+        EntityManager {
+            entity_tmpls: HashMap::new(),
+            sprite_manager: manager,
+            id_counter: 0,
+        }
+    }
+
+    pub fn init(&mut self) -> Result<&Self, Box<dyn Error>> {
+        let mut map = HashMap::new();
+        let paths = glob("./data/entities/*.json")?
+            .filter_map(Result::ok);
+        for path in paths {
+            let mut file = File::open(path)?;
+            let mut data = String::new();
+            file.read_to_string(&mut data)?;
+            let ent: EntityTmpl = serde_json::from_str(&data)?;
+
+            map.insert(ent.name.clone(), ent);
+        }
+        self.entity_tmpls = map;
+        return Ok(self);
+    }
+
+    pub fn create_entity(&mut self, name: &str) -> Option<Entity> {
+        let ent_tmpl = self.entity_tmpls.get(name)?;
+        let sprite = self.sprite_manager.get_sprite(&ent_tmpl.sprite_name)?;
+        let ent = Entity {
+            id: self.id_counter,
+            name: String::from(name),
+            sprite: sprite.clone(),
+            pos: Vector3::new(0.0, 0.0, 0.0),
+            dir: Vector2::new(0.0, 0.0),
+            collidable: ent_tmpl.collidable,
+            collision_radius: ent_tmpl.collision_radius,
+            animation: None,
+            dead: false,
+        };
+        self.id_counter += 1;
+        return Some(ent);
+    }
 }
 
 pub struct SpriteManager<'a> {
@@ -105,7 +168,7 @@ impl<'a> SpriteManager<'a> {
     }
 }
 
-impl<'a> Entity<'a> {
+impl Entity {
     // Get the correct rectangle to render from the sprite sheet
     // Based on current angle to player and animation frame (if applicable)
     // x_slice: desired slice of sprite on screen

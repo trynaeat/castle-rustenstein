@@ -1,0 +1,6 @@
+{
+    "name": "soldier",
+    "sprite_name": "04_soldier",
+    "collidable": true,
+    "collision_radius": 0.5
+}
