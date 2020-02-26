@@ -150,6 +150,21 @@ impl<'a, 'b, 'c> Game<'a, 'b, 'c> {
                         std::ptr::copy(tex_start, ceil_start, 4);
                     }
                 }
+
+                // Draw skybox on tile if -1
+                if c_cell < -1 {
+                    let tex = self.texture_manager.get_skybox_tex();
+                    let tex_raw = self.texture_manager.get_skybox_tex_raw();
+                    let tex_width = tex.query().width;
+                    let tex_height = tex.query().height;
+                    let tex_x = (tex_width as f64 * x as f64 / SCREEN_WIDTH as f64) as u32;
+                    let tex_y = (tex_height as f64 * y as f64 / SCREEN_HEIGHT as f64) as u32;
+                    unsafe {
+                        let tex_start = &tex_raw[((tex_width * tex_y + tex_x) * 4) as usize] as *const u8;
+                        let ceil_start = &mut new_data[(((SCREEN_HEIGHT - y) * SCREEN_WIDTH + x) * 4) as usize] as *mut u8;
+                        std::ptr::copy(tex_start, ceil_start, 4);
+                    }
+                }
             }
         }
         // Faster than texture.update?

@@ -1,7 +1,6 @@
 extern crate image;
 extern crate glob;
 
-use glob::glob;
 use serde::{Serialize, Deserialize};
 
 use std::fs::File;
